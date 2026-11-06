@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const fresh = rows.filter((x) => !done.has(x.key) && (done.add(x.key), true));
     if (!fresh.length) return SKIP; // nothing new: no write
     for (const row of fresh) applyEntry(me, row.entry!, row.date, row.at);
-    // ponytail: keys kept in insertion order, capped (~12 bytes/set); past 20k sets the
+    // ponytail: keys kept in insertion order, capped (14 chars ≈ 17 bytes/set in JSON, ~340KB at the cap); past 20k sets the
     // earliest-imported keys fall off and those sets could re-import. Fine for v1 histories.
     me.importedSets = [...done].slice(-20000);
     return { sets: fresh.length, days: new Set(fresh.map((x) => x.date)).size };

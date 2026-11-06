@@ -284,6 +284,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         if (a.emote && t < a.emote.until) drawEmote(ctx, a.emote.kind, a.emote.from, a.x, ty);
       }
       const wrap = wrapRef.current;
+      if (wrap && !wrap.dataset.ready) wrap.dataset.ready = "1"; // hides the "Opening…" placeholder
       const mine = meId ? agents.current.get(meId) : undefined;
       if (wrap && mine && !followed.current && wrap.scrollWidth > wrap.clientWidth + 2) {
         followed.current = true;

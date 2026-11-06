@@ -156,3 +156,4 @@ input.invalid { border-color: #b8402f; box-shadow: 0 0 0 2px #b8402f55; }
 .strip li.more { align-self: center; font-size: 16px; color: var(--gold); padding: 0 8px; }
 .floor-loading { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; color: var(--gold); font-family: var(--font-pixel), monospace; font-size: 14px; }
 [aria-busy="true"] { opacity: 0.6; cursor: progress; }
+.floor-wrap[data-ready] .floor-loading { display: none; }

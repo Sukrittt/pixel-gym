@@ -2,7 +2,7 @@ import JoinForms from "@/components/JoinForms";
 import MemberStrip from "@/components/MemberStrip";
 import LiveFloor from "@/components/LiveFloor";
 import { PARAMS, type Param } from "@/lib/body";
-import { floorViewNow } from "@/lib/floor";
+import { floorViewNow, memberViewsNow } from "@/lib/floor";
 import { currentMember, readSession, requestToday } from "@/lib/server/session";
 import { readFloor, resolveCode } from "@/lib/server/store";
 import { notFound, redirect } from "next/navigation";
@@ -64,7 +64,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
           <JoinForms code={c} />
           {/* only what the strip draws: no volumes, weigh-ins or history for anonymous visitors */}
           <MemberStrip
-            members={floorViewNow({ ...floor, members: floor.members.slice(0, 8) }, await requestToday()).members.map((m) => ({ id: m.id, name: m.name, look: m.look, params: m.params, sat: m.sat, active: !!m.today }))}
+            members={memberViewsNow(floor.members.slice(0, 8), await requestToday()).map((m) => ({ id: m.id, name: m.name, look: m.look, params: m.params, sat: m.sat, active: !!m.today }))}
             more={Math.max(0, floor.members.length - 8)}
           />
         </div>

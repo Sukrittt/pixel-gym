@@ -119,6 +119,7 @@ export function findExercise(raw: string, opts: { prefix?: boolean } = {}): Exer
     }
   }
   if (best || !opts.prefix || n.length < 3) return best;
+  if (n.endsWith("s") && n.length > 3) return findExercise(n.slice(0, -1), opts) ?? undefined; // "rows", "curls"
   // prefix while typing: "bench" -> Bench Press, "lat p" -> Lat Pulldown (list order = most common first).
   // Lifts only: a lifter typing "row" means a row, not the rowing machine.
   const lifts = EXERCISES.filter((e) => !e.cardio);

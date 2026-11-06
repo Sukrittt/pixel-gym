@@ -4,7 +4,7 @@ import { useState } from "react";
 import { localDate } from "@/lib/floor";
 
 async function post(url: string, body: object) {
-  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, today: localDate() }) });
+  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, today: localDate() }), signal: AbortSignal.timeout(10_000) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error ?? "Something went wrong.");
   return j as { code: string };
@@ -23,7 +23,8 @@ export default function JoinForms({ code: preset }: { code?: string }) {
       router.push(`/floor/${code}`);
       router.refresh();
     } catch (x) {
-      setErr((x as Error).message);
+      const e = x as Error;
+      setErr(e instanceof TypeError || e.name === "TimeoutError" ? "Network error: check your connection and try again." : e.message);
       setBusy(false);
     }
   };

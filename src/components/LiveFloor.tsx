@@ -73,7 +73,7 @@ export default function LiveFloor({
     let live = true;
     const load = async () => {
       try {
-        const r = await fetch(`/api/floors/${code}?today=${localDate()}`, { cache: "no-store" });
+        const r = await fetch(`/api/floors/${code}?today=${localDate()}`, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
         if (r.status === 401 || r.status === 403) {
           // session no longer matches this floor (left, or joined another floor in another tab)
           if (live) router.refresh();
@@ -102,12 +102,12 @@ export default function LiveFloor({
   }, [code, router, toast]);
 
   const loadSeries = useCallback(async (id: string): Promise<Snapshot[]> => {
-    const r = await fetch(`/api/series?id=${id}&today=${localDate()}`);
+    const r = await fetch(`/api/series?id=${id}&today=${localDate()}`, { signal: AbortSignal.timeout(10_000) });
     if (!r.ok) throw new Error(String(r.status)); // card shows an error line
     return (await r.json()).series;
   }, []);
   const onEmote = async (to: string, kind: EmoteKind) => {
-    const r = await fetch("/api/emote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, kind }) }).catch(() => null);
+    const r = await fetch("/api/emote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, kind }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
     if (r?.ok) setView((v) => localEmote(v, meId, to, kind));
     return r?.status ?? 0;
   };

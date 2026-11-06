@@ -100,3 +100,6 @@ export function meData(doc: FloorDoc, m: Member, today: string): MeData {
     .map(([date, d]) => ({ date, focus: d.focus, total: Math.round(d.total), sets: d.sets, cardioMin: d.cardioMin, km: d.km, bw: d.bw, pr: !!d.pr }));
   return { code: doc.code, floorName: doc.name, me: memberView(m, today, Date.now()), series: seriesFor(m, today), days };
 }
+
+/** Member views as of right now (server render of the invite strip). */
+export const memberViewsNow = (members: Member[], today: string) => members.map((m) => memberView(m, today, Date.now()));

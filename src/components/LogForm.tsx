@@ -83,9 +83,10 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions.`);
     if (!d) return setMsg("Type an exercise first.");
     setMsg("");
+    setNote("");
     setRows((v) => [...v, toRow(d)]);
     setDraft((x) => ({ ...x, exercise: "" }));
-    exRef.current?.focus(); // ready for the next lift
+    exRef.current?.focus(); // ready for the next lift (sets/reps/kg kept for the next one, shown in the preview)
   };
 
   const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRowsT(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
@@ -112,7 +113,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     setMsg("");
     try {
       const logId = nonce + hash64(JSON.stringify(list));
-      const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }) });
+      const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }), signal: AbortSignal.timeout(10_000) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Could not save.");
       // duplicate = this exact submission already landed (lost response): still go see it
@@ -123,14 +124,14 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       router.push(`/floor/${j.code ?? code}?logged=1&gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
     } catch (x) {
       setBusy(false);
-      setMsg(x instanceof TypeError ? "Network error: check your connection and try again." : (x as Error).message || "Could not save.");
+      setMsg(x instanceof TypeError || (x as Error).name === "TimeoutError" ? "Network error: check your connection and try again. Saving again won't double-log." : (x as Error).message || "Could not save.");
     }
   };
 
   const importCsv = async (file: File) => {
     setImp("Importing…");
     try {
-      const r = await fetch("/api/import", { method: "POST", body: await file.text() });
+      const r = await fetch("/api/import", { method: "POST", body: await file.text(), signal: AbortSignal.timeout(60_000) });
       const j = await r.json().catch(() => ({}));
       setImp(
         r.ok && j.sets === 0
@@ -203,7 +204,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
             <button style={{ flex: "0 0 auto" }}>+ ADD</button>
             <span className="muted">
               {pending && pending !== "unknown"
-                ? `→ ${pending.exercise} · works ${muscles(pending.exercise)}`
+                ? `→ ${pending.exercise} · ${pending.sets}×${pending.reps} @ ${pending.kg ? `${pending.kg} kg` : "bodyweight"} · works ${muscles(pending.exercise)}`
                 : pending === "unknown"
                   ? findExercise(draft.exercise)?.cardio
                     ? "that's cardio: press ADD to move it to the cardio row"

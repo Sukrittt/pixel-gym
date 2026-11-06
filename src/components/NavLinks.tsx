@@ -9,7 +9,7 @@ export default function NavLinks({ floor }: { floor: string | null }) {
   return (
     <>
       {links.map(([href, label]) => (
-        <Link key={href} href={href} aria-current={path === href ? "page" : undefined}>
+        <Link key={href} href={href} aria-current={path === href ? "page" : undefined} aria-label={label}>
           {label === "Avatar lab" ? (
             <>
               <span className="hide-sm">Avatar </span>lab

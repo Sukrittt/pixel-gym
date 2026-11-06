@@ -135,7 +135,8 @@ export function InspectCard({
   const emote = async (k: EmoteKind) => {
     setSent("sending…");
     const status = await onEmote?.(k);
-    setSent(status === undefined || status === 200 ? "sent!" : status === 429 ? "slow down a sec" : "couldn't send, check your connection");
+    const what = k === "bump" ? "Fist bump" : k === "flex" ? "Flex" : "Clap";
+    setSent(status === undefined || status === 200 ? `${what} sent to ${m.name}!` : status === 429 ? "Slow down a sec." : "Couldn't send. Check your connection.");
   };
   const columns: [string, { p: Params; sat: number }][] = [
     ["START", m.snaps.day1],
@@ -170,9 +171,11 @@ export function InspectCard({
                 {k === "bump" ? "👊 FIST BUMP" : k === "flex" ? "💪 FLEX" : "👏 CLAP"}
               </button>
             ))}
-          {sent && <span className="muted" role="status">{sent}</span>}
           <button onClick={() => downloadCard(m, floorName)}>⬇ SHARE CARD</button>
         </div>
+        <p className="muted" role="status" style={{ minHeight: "1.4em", margin: "6px 0 0" }}>
+          {sent}
+        </p>
         <h3>TIMELAPSE</h3>
         {!series ? (
           <p className="muted">loading…</p>
