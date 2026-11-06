@@ -16,7 +16,7 @@ export function cleanName(raw: unknown, max = 12): string | null {
   const full = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim();
   let s = full.slice(0, max);
   // don't cut mid-word when there's a space to break at
-  if (full.length > max && full[max] !== " " && s.includes(" ")) s = s.slice(0, s.lastIndexOf(" "));
+  if (full.length > max && full[max] !== " " && s.lastIndexOf(" ") >= max / 2) s = s.slice(0, s.lastIndexOf(" "));
   s = s.trim();
   return s.length >= 1 ? s : null;
 }

@@ -51,7 +51,7 @@ export default function AvatarLab() {
         </label>
         <div className="lab-row">
           {Object.keys(PRESETS).map((k) => (
-            <button key={k} onClick={() => setP({ ...PRESETS[k] })}>{k}</button>
+            <button key={k} className={JSON.stringify(p) === JSON.stringify(PRESETS[k]) ? "primary" : ""} aria-pressed={JSON.stringify(p) === JSON.stringify(PRESETS[k])} onClick={() => setP({ ...PRESETS[k] })}>{k}</button>
           ))}
         </div>
         <div className="lab-row">

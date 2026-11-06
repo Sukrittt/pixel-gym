@@ -11,6 +11,7 @@ export default function MeView({ initial }: { initial: MeData }) {
   const [lookMsg, setLookMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const setLook = async (k: keyof typeof LOOK_MAX) => {
+    if (saving) return; // ignore rapid repeats without disabling (keeps keyboard focus)
     const prev = data.me.look;
     const look = { ...prev, [k]: (prev[k] + 1) % LOOK_MAX[k] };
     setData((d) => ({ ...d, me: { ...d.me, look } })); // optimistic
@@ -53,7 +54,7 @@ export default function MeView({ initial }: { initial: MeData }) {
           <h3>YOUR LOOK</h3>
           <div className="lab-row" style={{ marginTop: 0 }}>
             {(["skin", "hair", "hairColor", "shirt", "shorts"] as const).map((k) => (
-              <button key={k} onClick={() => setLook(k)} disabled={saving} aria-label={`change ${k === "hairColor" ? "hair color" : k}, currently ${me.look[k] + 1} of ${LOOK_MAX[k]}`}>
+              <button key={k} onClick={() => setLook(k)} aria-busy={saving} aria-label={`change ${k === "hairColor" ? "hair color" : k}, currently ${me.look[k] + 1} of ${LOOK_MAX[k]}`}>
                 {k === "hairColor" ? "hair color" : k} {me.look[k] + 1}/{LOOK_MAX[k]} ↻
               </button>
             ))}
@@ -81,7 +82,7 @@ export default function MeView({ initial }: { initial: MeData }) {
                     {d.pr ? " · PR!" : ""}
                   </span>
                   <span className="muted">
-                    {[d.total ? formatKg(d.total) : "", d.cardioMin ? `${d.cardioMin} min cardio` : "", d.bw ? `${d.bw} kg bw` : ""].filter(Boolean).join(" · ")}
+                    {[d.total ? formatKg(d.total) : "", d.cardioMin ? `${d.cardioMin} min cardio${d.km ? ` · ${d.km} km` : ""}` : "", d.bw ? `${d.bw} kg bw` : ""].filter(Boolean).join(" · ")}
                   </span>
                 </li>
               ))}

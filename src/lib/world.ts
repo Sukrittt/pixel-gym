@@ -523,7 +523,7 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
   drawText(ctx, "WALL OF FAME", x0 + w / 2 - textWidth("WALL OF FAME") / 2, y0 + 4, "#ffd23f");
   if (!entries.length) {
     const msg = "LOG A WORKOUT TO GET ON THE WALL";
-    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 22, "#f3e6c8");
+    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 22, "#ffffff");
   }
   entries.slice(0, 7).forEach((e, i) => {
     const fx = x0 + 8 + i * 28, fy = y0 + 13;

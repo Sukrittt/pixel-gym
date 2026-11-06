@@ -1,4 +1,3 @@
-import { cache } from "react";
 import JoinForms from "@/components/JoinForms";
 import MemberStrip from "@/components/MemberStrip";
 import LiveFloor from "@/components/LiveFloor";
@@ -20,12 +19,11 @@ function parseGain(raw: string | string[] | undefined): Partial<Record<Param, nu
   return out;
 }
 
-// one storage read per request, shared by the title and the page
-const floorFor = cache((code: string) => readFloor(code, true));
 
 export async function generateMetadata({ params }: PageProps<"/floor/[code]">) {
   const { code } = await params;
-  const floor = await floorFor(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+  // title from the 10s memo read; the page body below does the fresh read
+  const floor = await readFloor(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
   return { title: floor ? `${floor.name} · Pixel Gym` : "Not found · Pixel Gym" };
 }
 
@@ -45,7 +43,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
   const s = await currentMember(true);
   if (!s || s.doc.code !== c) {
     const sess = await readSession();
-    const floor = await floorFor(c);
+    const floor = await readFloor(c, true);
     if (!floor) {
       // hand-typed look-alike (2Q5Y8D for ZQ5Y8D): send them to the real floor
       const real = await resolveCode(c, true);
@@ -64,7 +62,11 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
         {sess && sess.code !== c && <p className="muted">You&apos;re signed in on another floor. Joining here moves you to this one.</p>}
         <div className="join-grid">
           <JoinForms code={c} />
-          <MemberStrip members={floorViewNow(floor, await requestToday()).members} />
+          {/* only what the strip draws: no volumes, weigh-ins or history for anonymous visitors */}
+          <MemberStrip
+            members={floorViewNow(floor, await requestToday()).members.slice(0, 8).map((m) => ({ id: m.id, name: m.name, look: m.look, params: m.params, sat: m.sat, active: !!m.today }))}
+            more={Math.max(0, floor.members.length - 8)}
+          />
         </div>
       </div>
     );

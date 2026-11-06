@@ -32,7 +32,7 @@ export default function FloorScreen({
           </li>
         ))}
       </ul>
-      <p className="muted">Click any avatar (or a name above) to inspect their body, send an emote, or scrub their timelapse.</p>
+      <p className="muted">Click or tap any avatar (or a name above) to inspect their body, send an emote, or scrub their timelapse.</p>
       {fresh && (
         <InspectCard
           m={fresh}

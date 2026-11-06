@@ -169,7 +169,7 @@ export default function LiveFloor({
             {gains.length > 0 && <> This session: {gains.map(([k, v]) => `${k} ${v > 0 ? "+" : ""}${v.toFixed(1)}`).join(" · ")}.</>}
             {gains.length > 0 && (
               <>
-                <br />
+                <br />{" "}
                 <span className="pump-note">Part of that is today&apos;s pump. It fades over a few hours, and what stays is real progress.</span>
               </>
             )}
@@ -189,7 +189,7 @@ export default function LiveFloor({
       {me && t && !showGain && (
         <p className="banner">
           Today you&apos;re at {ZONE_NAME[t.zone]} · {t.focus}
-          {t.total ? ` · ${formatKg(t.total)}` : ""}. Your name tag is gold. Click any avatar to inspect or fist-bump.
+          {t.total ? ` · ${formatKg(t.total)}` : ""}. Your name tag is gold. Click or tap any avatar to inspect or fist-bump.
         </p>
       )}
 

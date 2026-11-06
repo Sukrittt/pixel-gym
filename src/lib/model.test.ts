@@ -170,11 +170,38 @@ describe("exercise search while typing", () => {
     expect(findExercise("bench", p)?.name).toBe("Bench Press");
     expect(findExercise("squ", p)?.name).toBe("Squat");
     expect(findExercise("lat p", p)?.name).toBe("Lat Pulldown");
-    expect(findExercise("row", p)?.name).toBe("Barbell Row");
+    expect(findExercise("row", p)?.name).toMatch(/ Row$/); // a row lift, named in the hint; never Rowing
     expect(findExercise("be", p)).toBeUndefined(); // too short to guess
     expect(findExercise("Mystery Machine 3000", p)).toBeUndefined();
     // server validation and CSV import stay strict
     expect(findExercise("bench")).toBeUndefined();
     expect(findExercise("Lat")).toBeUndefined();
+  });
+});
+
+describe("csv import dedupe keys", () => {
+  const hevy = (unit: "kg" | "lbs", rows: [string, string, number, number][]) =>
+    [`"title","start_time","exercise_title","set_index","set_type","weight_${unit}","reps"`, ...rows.map(([t, ex, i, w]) => `"Day","${t}","${ex}","${i}","normal","${w}","5"`)].join("\n");
+
+  it("same sets keep the same keys across kg and lbs exports", () => {
+    const kg = parseWorkoutCsv(hevy("kg", [["3 Nov 2026, 07:30", "Bench Press (Barbell)", 0, 61.25], ["3 Nov 2026, 07:30", "Bench Press (Barbell)", 1, 61.25]]));
+    const lb = parseWorkoutCsv(hevy("lbs", [["3 Nov 2026, 07:30", "Bench Press (Barbell)", 0, 135.03], ["3 Nov 2026, 07:30", "Bench Press (Barbell)", 1, 135.03]]));
+    expect(kg.rows.map((r) => r.key)).toEqual(lb.rows.map((r) => r.key));
+    expect(new Set(kg.rows.map((r) => r.key)).size).toBe(2); // two distinct sets
+  });
+
+  it("an overlapping newer export only adds the new sets", () => {
+    const a = parseWorkoutCsv(readFileSync("fixtures/hevy-sample.csv", "utf8"));
+    const b = parseWorkoutCsv(readFileSync("fixtures/hevy-sample.csv", "utf8") + '\n"Extra","6 Nov 2026, 07:00","","","Squat (Barbell)","","","0","normal","100","5","","",""');
+    const known = new Set(a.rows.map((r) => r.key));
+    expect(b.rows.filter((r) => !known.has(r.key)).map((r) => r.entry)).toEqual([{ kind: "lift", exercise: "Squat (Barbell)", sets: 1, reps: 5, kg: 100 }]);
+  });
+
+  it("identical sets without a set index still count separately", () => {
+    const csv = "Date;Exercise Name;Weight;Reps\n2026-11-01 09:00:00;Pull Up;0;8\n2026-11-01 09:00:00;Pull Up;0;8";
+    const r = parseWorkoutCsv(csv);
+    expect(r.rows).toHaveLength(2);
+    expect(r.rows[0].key).not.toBe(r.rows[1].key);
+    expect(parseWorkoutCsv(csv).rows.map((x) => x.key)).toEqual(r.rows.map((x) => x.key)); // stable
   });
 });

@@ -39,7 +39,7 @@ export const EXERCISES: Exercise[] = [
   { name: "Pull Up", m: { back: 1, arms: 0.5 }, bw: 1, aliases: ["pullup", "pull-up"] },
   { name: "Chin Up", m: { back: 0.8, arms: 0.8 }, bw: 1, aliases: ["chinup", "chin-up"] },
   { name: "Lat Pulldown", m: { back: 1, arms: 0.4 }, aliases: ["pulldown"] },
-  { name: "Barbell Row", m: { back: 1, arms: 0.4, shoulders: 0.2 }, aliases: ["bent over row", "pendlay row", "row"] },
+  { name: "Barbell Row", m: { back: 1, arms: 0.4, shoulders: 0.2 }, aliases: ["bent over row", "pendlay row"] },
   { name: "Dumbbell Row", m: { back: 1, arms: 0.4 }, aliases: ["one arm row", "single arm row"] },
   { name: "Seated Cable Row", m: { back: 1, arms: 0.4 }, aliases: ["cable row", "seated row"] },
   { name: "T-Bar Row", m: { back: 1, arms: 0.3 } },
@@ -122,7 +122,11 @@ export function findExercise(raw: string, opts: { prefix?: boolean } = {}): Exer
   // prefix while typing: "bench" -> Bench Press, "lat p" -> Lat Pulldown (list order = most common first).
   // Lifts only: a lifter typing "row" means a row, not the rowing machine.
   const lifts = EXERCISES.filter((e) => !e.cardio);
-  return lifts.find((e) => norm(e.name).startsWith(n)) ?? lifts.find((e) => e.aliases?.some((a) => norm(a).startsWith(n)));
+  return (
+    lifts.find((e) => norm(e.name).startsWith(n)) ??
+    lifts.find((e) => e.aliases?.some((a) => norm(a).startsWith(n))) ??
+    lifts.find((e) => norm(e.name).split(" ").some((w) => w.startsWith(n))) // "row" -> Barbell Row
+  );
 }
 
 /** Which station an exercise sends you to, and the label on your name tag. */

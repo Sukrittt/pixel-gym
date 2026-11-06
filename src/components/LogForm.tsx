@@ -49,6 +49,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState("");
+  const [note, setNote] = useState("");
   // per-visit nonce; the log id = nonce + hash of the exact payload, so an identical retry
   // (lost response, double tap) dedupes server-side and any change is a new submission
   const [nonce] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -75,7 +76,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const addDraft = (e?: React.FormEvent) => {
     e?.preventDefault();
     const d = draftEntry();
-    const ex = findExercise(draft.exercise, { prefix: true }) ?? findExercise(draft.exercise);
+    const ex = findExercise(draft.exercise) ?? findExercise(draft.exercise, { prefix: true });
     if (ex?.cardio) {
       // typed "running" in the lift box: move it to the cardio row instead of erroring
       setCardio((c) => ({ ...c, exercise: ex.name }));
@@ -158,12 +159,22 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
         <h3>START FROM A TEMPLATE</h3>
         <div className="lab-row" style={{ marginTop: 0 }}>
           {Object.keys(TEMPLATES).map((k) => (
-            <button key={k} type="button" onClick={() => setRowsT([...rows, ...TEMPLATES[k].map(toRow)])}>
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                const have = new Set(rows.map((r) => r.exercise));
+                const add = TEMPLATES[k].filter((l) => !have.has(l.exercise));
+                setRowsT([...rows, ...add.map(toRow)]);
+                const dup = TEMPLATES[k].length - add.length;
+                if (dup) setNote(`${dup} ${dup === 1 ? "exercise was" : "exercises were"} already in your list, so ${dup === 1 ? "it was" : "they were"} kept as is.`);
+              }}
+            >
               {k}
             </button>
           ))}
         </div>
-        <p className="muted">Adds that workout to your list. Then tweak the numbers to what you actually did.</p>
+        <p className="muted" role="status">{note || "Adds that workout to your list. Then tweak the numbers to what you actually did."}</p>
 
         <form onSubmit={addDraft}>
           <h3>ADD A LIFT</h3>

@@ -7,12 +7,6 @@ import { cleanEntry } from "@/lib/server/util";
 
 const MAX_BYTES = 3_000_000;
 
-/** Short stable key for one imported set (FNV-1a, base36). */
-function setKey(s: string) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
-  return (h >>> 0).toString(36);
-}
 
 /** Hevy / Strong CSV import. Body: raw CSV text. */
 export async function POST(req: Request) {
@@ -27,22 +21,14 @@ export async function POST(req: Request) {
   const r = await mutateFloor(s.doc.code, (doc) => {
     const me = doc.members.find((m) => m.id === s.me.id);
     if (!me) return SKIP;
-    // re-importing a newer full export must not double history: each set gets a key
-    // (date, time, exercise, numbers, nth identical set) and known keys are skipped
+    // re-importing a newer full export must not double history: each set's source key
+    // (see parseWorkoutCsv) is remembered and known keys are skipped
     const done = new Set(me.importedSets ?? []);
-    const seenNow = new Map<string, number>();
-    const fresh = rows.filter((x) => {
-      const base = JSON.stringify([x.date, x.at, x.entry]);
-      const n = (seenNow.get(base) ?? 0) + 1;
-      seenNow.set(base, n);
-      const k = setKey(base + "#" + n);
-      if (done.has(k)) return false;
-      done.add(k);
-      return true;
-    });
+    const fresh = rows.filter((x) => !done.has(x.key) && (done.add(x.key), true));
     if (!fresh.length) return SKIP; // nothing new: no write
     for (const row of fresh) applyEntry(me, row.entry!, row.date, row.at);
-    // ponytail: capped key list (~8 bytes/set); a 20k+ set history re-imports its oldest sets
+    // ponytail: keys kept in insertion order, capped (~12 bytes/set); past 20k sets the
+    // earliest-imported keys fall off and those sets could re-import. Fine for v1 histories.
     me.importedSets = [...done].slice(-20000);
     return { sets: fresh.length, days: new Set(fresh.map((x) => x.date)).size };
   });
