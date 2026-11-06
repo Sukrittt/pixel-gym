@@ -326,6 +326,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         ))}
       </div>
       <div className="floor-wrap" ref={wrapRef}>
+        <p className="floor-loading" aria-hidden>Opening the gym floor…</p>
         <canvas
           ref={canvasRef}
           width={WW}

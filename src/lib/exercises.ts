@@ -32,7 +32,6 @@ export const EXERCISES: Exercise[] = [
   { name: "Front Raise", m: { shoulders: 1 } },
   { name: "Rear Delt Fly", m: { shoulders: 0.8, back: 0.4 }, aliases: ["reverse fly", "rear delt"] },
   { name: "Face Pull", m: { shoulders: 0.7, back: 0.5 } },
-  { name: "Upright Row", m: { shoulders: 0.8, back: 0.4 } },
   { name: "Shrug", m: { back: 0.6, shoulders: 0.4 }, aliases: ["shrugs"] },
   // back / pull
   { name: "Deadlift", m: { legs: 0.8, back: 0.9, core: 0.3 }, aliases: ["conventional deadlift"] },
@@ -44,6 +43,7 @@ export const EXERCISES: Exercise[] = [
   { name: "Seated Cable Row", m: { back: 1, arms: 0.4 }, aliases: ["cable row", "seated row"] },
   { name: "T-Bar Row", m: { back: 1, arms: 0.3 } },
   { name: "Straight Arm Pulldown", m: { back: 1 }, aliases: ["pullover"] },
+  { name: "Upright Row", m: { shoulders: 0.8, back: 0.4 } },
   { name: "Back Extension", m: { back: 0.6, legs: 0.4 }, bw: 0.5, aliases: ["hyperextension"] },
   // arms
   { name: "Bicep Curl", m: { arms: 1 }, aliases: ["barbell curl", "dumbbell curl", "biceps curl", "curl"] },
@@ -125,7 +125,7 @@ export function findExercise(raw: string, opts: { prefix?: boolean } = {}): Exer
   return (
     lifts.find((e) => norm(e.name).startsWith(n)) ??
     lifts.find((e) => e.aliases?.some((a) => norm(a).startsWith(n))) ??
-    lifts.find((e) => norm(e.name).split(" ").some((w) => w.startsWith(n))) // "row" -> Barbell Row
+    lifts.find((e) => norm(e.name).split(" ").some((w) => w.startsWith(n))) // "row" -> Barbell Row (first row in list order)
   );
 }
 

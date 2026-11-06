@@ -64,7 +64,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
           <JoinForms code={c} />
           {/* only what the strip draws: no volumes, weigh-ins or history for anonymous visitors */}
           <MemberStrip
-            members={floorViewNow(floor, await requestToday()).members.slice(0, 8).map((m) => ({ id: m.id, name: m.name, look: m.look, params: m.params, sat: m.sat, active: !!m.today }))}
+            members={floorViewNow({ ...floor, members: floor.members.slice(0, 8) }, await requestToday()).members.map((m) => ({ id: m.id, name: m.name, look: m.look, params: m.params, sat: m.sat, active: !!m.today }))}
             more={Math.max(0, floor.members.length - 8)}
           />
         </div>

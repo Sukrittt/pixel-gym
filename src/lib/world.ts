@@ -535,6 +535,6 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
     if (e.streak >= 10) R(fx + 17, fy - 3, 2, 2, "#ffffff");
     R(fx, fy + 13, 5, 7, "#2a1c16");
     drawText(ctx, String(i + 1), fx + 1, fy + 14, "#ffd23f");
-    drawText(ctx, e.name.slice(0, 5), fx + 4, fy + 22, "#f3e6c8");
+    drawText(ctx, e.name.slice(0, 6), fx - 2, fy + 22, "#f3e6c8");
   });
 }

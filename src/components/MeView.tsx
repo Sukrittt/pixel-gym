@@ -17,7 +17,7 @@ export default function MeView({ initial }: { initial: MeData }) {
     setData((d) => ({ ...d, me: { ...d.me, look } })); // optimistic
     setSaving(true);
     setLookMsg("");
-    const r = await fetch("/api/look", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ look }) }).catch(() => null);
+    const r = await fetch("/api/look", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ look }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
     setSaving(false);
     if (!r?.ok) {
       setData((d) => ({ ...d, me: { ...d.me, look: prev } })); // roll back

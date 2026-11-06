@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { Entry } from "@/lib/body";
 import { EXERCISES, findExercise } from "@/lib/exercises";
+import { hash64 } from "@/lib/csv";
 import { localDate } from "@/lib/floor";
 
 const LIFTS = EXERCISES.filter((e) => !e.cardio);
@@ -24,12 +25,6 @@ const TEMPLATES: Record<string, Lift[]> = {
   CORE: [lift("Plank", 3, 1, 0), lift("Hanging Leg Raise", 3, 12, 0), lift("Crunch", 3, 20, 0)],
 };
 
-/** Tiny stable string hash (FNV-1a) for the idempotency key. */
-const hash = (s: string) => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
-  return (h >>> 0).toString(36);
-};
 
 const muscles = (name: string) => {
   const ex = findExercise(name);
@@ -55,9 +50,11 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const [nonce] = useState(() => Math.random().toString(36).slice(2, 10));
   const [bwInvalid, setBwInvalid] = useState(false);
   const bwRef = useRef<HTMLInputElement>(null);
+  const exRef = useRef<HTMLInputElement>(null);
   // any edit clears a stale validation message and starts a new submission
   const touch = <T,>(set: (v: T) => void) => (v: T) => {
     setMsg("");
+    setNote("");
     setBwInvalid(false);
     set(v);
   };
@@ -88,6 +85,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     setMsg("");
     setRows((v) => [...v, toRow(d)]);
     setDraft((x) => ({ ...x, exercise: "" }));
+    exRef.current?.focus(); // ready for the next lift
   };
 
   const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRowsT(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
@@ -113,7 +111,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     setBusy(true);
     setMsg("");
     try {
-      const logId = nonce + hash(JSON.stringify(list));
+      const logId = nonce + hash64(JSON.stringify(list));
       const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Could not save.");
@@ -166,8 +164,8 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
                 const have = new Set(rows.map((r) => r.exercise));
                 const add = TEMPLATES[k].filter((l) => !have.has(l.exercise));
                 setRowsT([...rows, ...add.map(toRow)]);
-                const dup = TEMPLATES[k].length - add.length;
-                if (dup) setNote(`${dup} ${dup === 1 ? "exercise was" : "exercises were"} already in your list, so ${dup === 1 ? "it was" : "they were"} kept as is.`);
+                const dup = TEMPLATES[k].filter((l) => have.has(l.exercise)).map((l) => l.exercise);
+                setNote(dup.length ? `${dup.join(", ")} ${dup.length === 1 ? "was" : "were"} already in your list, so kept as is.` : "");
               }}
             >
               {k}
@@ -181,7 +179,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="e.g. bench, squat, curl" />
+              <input ref={exRef} list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="e.g. bench, squat, curl" />
             </label>
             <label>
               SETS

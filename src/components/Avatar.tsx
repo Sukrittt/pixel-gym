@@ -76,7 +76,7 @@ export function Timelapse({ series, look, who }: { series: Snapshot[]; look: Mem
           >
             {playing ? "PAUSE" : "PLAY"}
           </button>
-          <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" />
+          <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" aria-valuetext={`Day ${idx + 1}, ${s.date}`} />
         </div>
       ) : (
         <p className="muted">{who ? `${who} is on day one. Their timelapse grows from tomorrow.` : "Day one. Come back tomorrow and this becomes a timelapse."}</p>
@@ -166,7 +166,7 @@ export function InspectCard({
         <div className="actions">
           {onEmote && !isMe &&
             (["bump", "flex", "clap"] as const).map((k) => (
-              <button key={k} onClick={() => emote(k)} disabled={sent === "sending…"}>
+              <button key={k} onClick={() => sent !== "sending…" && emote(k)} aria-busy={sent === "sending…"}>
                 {k === "bump" ? "👊 FIST BUMP" : k === "flex" ? "💪 FLEX" : "👏 CLAP"}
               </button>
             ))}

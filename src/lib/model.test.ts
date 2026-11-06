@@ -170,7 +170,7 @@ describe("exercise search while typing", () => {
     expect(findExercise("bench", p)?.name).toBe("Bench Press");
     expect(findExercise("squ", p)?.name).toBe("Squat");
     expect(findExercise("lat p", p)?.name).toBe("Lat Pulldown");
-    expect(findExercise("row", p)?.name).toMatch(/ Row$/); // a row lift, named in the hint; never Rowing
+    expect(findExercise("row", p)?.name).toBe("Barbell Row"); // never Rowing (cardio) or Upright Row
     expect(findExercise("be", p)).toBeUndefined(); // too short to guess
     expect(findExercise("Mystery Machine 3000", p)).toBeUndefined();
     // server validation and CSV import stay strict

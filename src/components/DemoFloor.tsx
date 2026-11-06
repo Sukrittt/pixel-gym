@@ -23,6 +23,11 @@ export default function DemoFloor() {
     const m = doc.current?.members.find((x) => x.id === id);
     return m ? seriesFor(m, localDate()) : [];
   }, []);
-  if (!view) return <div className="floor-wrap" style={{ aspectRatio: "640 / 384" }} />;
+  if (!view)
+    return (
+      <div className="floor-wrap" style={{ aspectRatio: "640 / 384" }}>
+        <p className="floor-loading">Opening the demo gym…</p>
+      </div>
+    );
   return <FloorScreen view={view} loadSeries={loadSeries} onEmote={(to, k) => setView((v) => v && localEmote(v, "you", to, k))} />;
 }

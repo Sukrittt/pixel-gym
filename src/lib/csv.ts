@@ -75,15 +75,15 @@ export function parseDate(s: string): { date: string; at: string } | null {
 /** key: stable id of this set in the source app, for dedupe across re-imports. */
 export type ImportRow = { date: string; at: string; entry: Entry; key: string };
 
-/** 2×32-bit FNV-1a (different seeds), ~53 bits: collisions negligible at 20k keys. */
-export function hash53(s: string): string {
+/** Two independent 32-bit FNV-1a variants, fixed-width base36 (64 bits): collisions negligible at 20k keys. */
+export function hash64(s: string): string {
   let a = 0x811c9dc5, b = 0x01000193 ^ 0x5bd1e995;
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
     a = Math.imul(a ^ c, 0x01000193);
     b = Math.imul(b ^ c, 0x01000193 + 2);
   }
-  return (a >>> 0).toString(36) + (b >>> 5).toString(36);
+  return (a >>> 0).toString(36).padStart(7, "0") + (b >>> 0).toString(36).padStart(7, "0");
 }
 export type ImportResult = { rows: ImportRow[]; skipped: number; format: "hevy" | "strong" | "unknown" };
 
@@ -123,7 +123,7 @@ export function parseWorkoutCsv(text: string): ImportResult {
     const base = si ? JSON.stringify([when.at, title, si]) : JSON.stringify([when.date, when.at, title, reps, Math.round(kg), Math.round(km * 10), Math.round(secs)]);
     const n = (nth.get(base) ?? 0) + 1;
     nth.set(base, n);
-    const key = hash53(`${base}#${n}`);
+    const key = hash64(`${base}#${n}`);
     if (reps > 0) {
       rows.push({ ...when, key, entry: { kind: "lift", exercise, sets: 1, reps, kg: Math.round(kg * 10) / 10 } });
     } else if (secs > 0 || km > 0) {
