@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { PARAMS, type Params, type Snapshot } from "@/lib/body";
-import type { EmoteKind, MemberView } from "@/lib/floor";
+import { statusFor, type EmoteKind, type MemberView } from "@/lib/floor";
 import { drawText, textWidth } from "@/lib/font";
 import { shirtFit, spriteCanvas, SH, SW, type SpriteOpts } from "@/lib/sprite";
 
@@ -149,7 +149,7 @@ export function InspectCard({
         <div className="card-head">
           <h2>{m.name}</h2>
           <span className="muted">
-            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {m.today ? m.today.focus : "off today"}
+            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {statusFor(m)}
           </span>
           <button className="x" onClick={onClose} aria-label="close">
             ×

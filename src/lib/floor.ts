@@ -1,7 +1,7 @@
-import { simulate, streak, weeklyVolume, withPump, addDays, type DayAgg, type History, type Params, type Snapshot } from "./body";
+import { planFor, simulate, streak, weeklyVolume, withPump, addDays, type DayAgg, type History, type Params, type Snapshot } from "./body";
 import type { Look } from "./sprite";
 
-export type Member = History & { id: string; name: string; look: Look; key?: string; recentLogs?: string[]; importedSets?: string[] };
+export type Member = History & { id: string; name: string; look: Look; key?: string; plan?: string[]; recentLogs?: string[]; importedSets?: string[] };
 export type EmoteKind = "bump" | "flex" | "clap";
 export type Emote = { id: string; from: string; to: string; kind: EmoteKind; at: string };
 export type FloorDoc = { code: string; name: string; created: string; members: Member[]; emotes: Emote[] };
@@ -18,6 +18,8 @@ export type MemberView = {
   today: DayAgg | null;
   snaps: { day1: Snap; ago30: Snap; now: Snap };
   days: number; // days of history (for hiding empty comparisons)
+  plan: string[] | null; // weekly plan, index = weekday (0 = Sunday)
+  planToday: string | null; // null = no plan, "" = planned rest day, else gym day ("GYM" or a template)
 };
 export type FloorView = { code: string; name: string; today: string; members: MemberView[]; emotes: Emote[]; demo?: boolean };
 
@@ -34,12 +36,14 @@ export function memberView(m: Member, today: string, now: number): MemberView {
     look: m.look,
     params: withPump(last.p, day, now),
     sat: last.sat,
-    streak: streak(m.days, today),
+    streak: streak(m.days, today, m.plan),
     weekly: weeklyVolume(m.days, today),
     today: trainedToday ? day : null,
     // day1 = the starting body before any training; ago30 only meaningful with 30+ days
     snaps: { day1: { p: m.start, sat: series[0].sat }, ago30: snap(series[Math.max(0, series.length - 31)]), now: snap(last) },
     days: series.length,
+    plan: m.plan ?? null,
+    planToday: planFor(m.plan, today),
   };
 }
 
@@ -77,10 +81,13 @@ export function formatKg(kg: number): string {
   return kg >= 1000 ? `${(kg / 1000).toFixed(1)}K KG` : `${Math.round(kg)} KG`;
 }
 
+/** Short status for lists: today's focus, a planned rest day, or off. */
+export const statusFor = (v: MemberView) => v.today?.focus ?? (v.planToday === "" ? "rest day" : "off today");
+
 export function tagFor(v: MemberView): string {
   const t = v.today;
   const n = v.name.toUpperCase();
-  if (!t) return `${n} · OFF TODAY`;
+  if (!t) return v.planToday === "" ? `${n} · REST DAY` : `${n} · OFF TODAY`;
   if (t.focus === "Cardio") return `${n} · CARDIO · ${t.km.toFixed(1)} KM`;
   if (t.focus === "Weigh-in") return `${n} · ${t.bw ?? "?"} KG`;
   if (t.focus === "Rest") return `${n} · REST DAY`;

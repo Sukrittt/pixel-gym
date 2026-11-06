@@ -4,6 +4,11 @@ import { useState } from "react";
 import { addDays } from "@/lib/body";
 import { formatKg, type MeData } from "@/lib/floor";
 import { LOOK_MAX } from "@/lib/sprite";
+import { PLAN_SLOTS } from "@/lib/templates";
+
+const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const slotName = (s: string) => (s === "" ? "Rest" : s === "GYM" ? "Gym (any workout)" : s.charAt(0) + s.slice(1).toLowerCase());
 import { downloadCard, ParamBars, SpriteView, Timelapse } from "./Avatar";
 
 export default function MeView({ initial }: { initial: MeData }) {
@@ -22,6 +27,20 @@ export default function MeView({ initial }: { initial: MeData }) {
     if (!r?.ok) {
       setData((d) => ({ ...d, me: { ...d.me, look: prev } })); // roll back
       setLookMsg("Couldn't save your look. Check your connection and try again.");
+    }
+  };
+  const [plan, setPlan] = useState(() => initial.me.plan ?? Array<string>(7).fill(""));
+  const [planMsg, setPlanMsg] = useState("");
+  const savePlan = async (i: number, v: string) => {
+    const prev = plan;
+    const next = plan.map((x, j) => (j === i ? v : x));
+    setPlan(next); // optimistic
+    setPlanMsg("");
+    const r = await fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: next }), signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    if (r?.ok) setPlanMsg(`Saved: ${DAY_NAMES[i]} is ${v === "" ? "a rest day" : `${slotName(v).toLowerCase()}`}.`);
+    else {
+      setPlan(prev);
+      setPlanMsg("Couldn't save your plan. Check your connection and try again.");
     }
   };
   const { me, series, days } = data;
@@ -51,6 +70,24 @@ export default function MeView({ initial }: { initial: MeData }) {
             <SpriteView opts={{ params: me.params, look: me.look, sat: me.sat }} scale={4} label="you today" />
             <ParamBars p={me.params} compare={me.snaps.day1.p} />
           </div>
+          <h3>YOUR GYM WEEK</h3>
+          <p className="muted">
+            Pick the days you train. On a gym day the log opens with that workout filled in. Rest days don&apos;t break your streak, and your avatar chills at the lockers
+            instead of sitting greyed outside.
+          </p>
+          <div className="week">
+            {WEEK.map((i) => (
+              <label key={i}>
+                {DAY_NAMES[i].slice(0, 3).toUpperCase()}
+                <select value={plan[i]} onChange={(e) => savePlan(i, e.target.value)} className={plan[i] ? "on" : ""} aria-label={`${DAY_NAMES[i]} plan`}>
+                  {PLAN_SLOTS.map((s) => (
+                    <option key={s} value={s}>{slotName(s)}</option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          {planMsg && <p className={planMsg.startsWith("Saved") ? "muted" : "err"} role="status">{planMsg}</p>}
           <h3>YOUR LOOK</h3>
           <div className="lab-row" style={{ marginTop: 0 }}>
             {(["skin", "hair", "hairColor", "shirt", "shorts"] as const).map((k) => (

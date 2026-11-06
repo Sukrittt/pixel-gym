@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useState } from "react";
 import type { Snapshot } from "@/lib/body";
-import type { EmoteKind, FloorView, MemberView } from "@/lib/floor";
+import { statusFor, type EmoteKind, type FloorView, type MemberView } from "@/lib/floor";
 import { InspectCard } from "./Avatar";
 import FloorCanvas from "./FloorCanvas";
 
@@ -25,9 +25,9 @@ export default function FloorScreen({
       <ul className="roster" aria-label="lifters on this floor">
         {view.members.map((m) => (
           <li key={m.id}>
-            <button className={m.id === meId ? "me" : m.today ? "" : "off"} onClick={() => setSel(m)}>
+            <button className={m.id === meId ? "me" : m.today || m.planToday === "" ? "" : "off"} onClick={() => setSel(m)}>
               {m.id === meId ? "★ " : ""}
-              {m.name} · {m.today ? m.today.focus : "off today"}
+              {m.name} · {statusFor(m)}
             </button>
           </li>
         ))}
