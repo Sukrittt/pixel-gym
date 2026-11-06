@@ -165,11 +165,16 @@ describe("world layout", () => {
 });
 
 describe("exercise search while typing", () => {
-  it("resolves prefixes to the most common exercise", () => {
-    expect(findExercise("bench")?.name).toBe("Bench Press");
-    expect(findExercise("squ")?.name).toBe("Squat");
-    expect(findExercise("lat p")?.name).toBe("Lat Pulldown");
-    expect(findExercise("be")).toBeUndefined(); // too short to guess
-    expect(findExercise("Mystery Machine 3000")).toBeUndefined();
+  it("resolves prefixes to the most common lift, only when asked (form typing)", () => {
+    const p = { prefix: true };
+    expect(findExercise("bench", p)?.name).toBe("Bench Press");
+    expect(findExercise("squ", p)?.name).toBe("Squat");
+    expect(findExercise("lat p", p)?.name).toBe("Lat Pulldown");
+    expect(findExercise("row", p)?.name).toBe("Barbell Row");
+    expect(findExercise("be", p)).toBeUndefined(); // too short to guess
+    expect(findExercise("Mystery Machine 3000", p)).toBeUndefined();
+    // server validation and CSV import stay strict
+    expect(findExercise("bench")).toBeUndefined();
+    expect(findExercise("Lat")).toBeUndefined();
   });
 });

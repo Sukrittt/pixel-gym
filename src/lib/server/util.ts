@@ -13,7 +13,11 @@ export function newCode() {
 }
 
 export function cleanName(raw: unknown, max = 12): string | null {
-  const s = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim().slice(0, max);
+  const full = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim();
+  let s = full.slice(0, max);
+  // don't cut mid-word when there's a space to break at
+  if (full.length > max && full[max] !== " " && s.includes(" ")) s = s.slice(0, s.lastIndexOf(" "));
+  s = s.trim();
   return s.length >= 1 ? s : null;
 }
 const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();

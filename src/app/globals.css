@@ -47,7 +47,7 @@ label { font-size: 11px; display: grid; gap: 4px; color: var(--ink); }
 .floor { position: relative; }
 .floor-wrap { overflow: auto; border: 3px solid #000; box-shadow: 4px 4px 0 #000; background: #000; max-height: 82vh; }
 .floor-wrap canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
-.zoom { position: absolute; right: 8px; top: 8px; z-index: 2; display: flex; gap: 4px; }
+.zoom { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 6px; }
 .zoom button { padding: 3px 7px; font-size: 10px; }
 .zoom button.on { background: var(--accent); }
 .floor-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -104,8 +104,8 @@ figcaption { font-size: 11px; margin-top: 4px; }
 .card:focus { outline: none; }
 .heat { display: flex; flex-wrap: wrap; gap: 2px; margin: 8px 0; }
 .heat i { width: 10px; height: 10px; display: block; border: 1px solid #0003; background: #d8c8a6; }
-.days { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; max-height: 360px; overflow: auto; }
-.days li { display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px dashed #0003; padding: 2px 0; }
+.panel ul.days { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; max-height: 360px; overflow: auto; }
+.days li { display: flex; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; font-size: 13px; border-bottom: 1px dashed #0003; padding: 4px 0; }
 
 /* floor banners */
 .invite { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -146,3 +146,10 @@ input.invalid { border-color: #b8402f; box-shadow: 0 0 0 2px #b8402f55; }
 }
 .nav a[aria-current="page"] { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
 @media (max-width: 420px) { .nav { gap: 12px; } .nav a { font-size: 12px; } }
+.hide-sm { display: inline; }
+@media (max-width: 420px) { .hide-sm { display: none; } }
+.join-grid { display: grid; grid-template-columns: minmax(0, 560px) 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .join-grid { grid-template-columns: 1fr; } }
+.strip { list-style: none; padding: 12px; margin: 0; display: flex; flex-wrap: wrap; gap: 10px; background: #3a2a20; border: 3px solid #000; }
+.strip li { display: grid; justify-items: center; gap: 4px; font-family: var(--font-pixel), monospace; font-size: 11px; }
+.strip .sprite { border-width: 2px; }

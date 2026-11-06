@@ -533,7 +533,8 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
     R(fx, fy, 18, 20, "#e8d9b5");
     ctx.drawImage(e.portrait, 7, 1, 18, 20, fx, fy, 18, 20);
     if (e.streak >= 10) R(fx + 17, fy - 3, 2, 2, "#ffffff");
-    drawText(ctx, String(i + 1), fx - 1, fy + 22, "#ffd23f");
-    drawText(ctx, e.name.slice(0, 4), fx + 5, fy + 22, "#f3e6c8");
+    R(fx, fy + 13, 5, 7, "#2a1c16");
+    drawText(ctx, String(i + 1), fx + 1, fy + 14, "#ffd23f");
+    drawText(ctx, e.name.slice(0, 5), fx + 4, fy + 22, "#f3e6c8");
   });
 }

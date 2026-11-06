@@ -67,7 +67,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   /** The draft row as an entry, or null if empty / unknown. */
   const draftEntry = (): Lift | null | "unknown" => {
     if (!draft.exercise.trim()) return null;
-    const ex = findExercise(draft.exercise);
+    const ex = findExercise(draft.exercise, { prefix: true });
     if (!ex || ex.cardio) return "unknown";
     return toLift({ ...draft, exercise: ex.name });
   };
@@ -75,7 +75,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const addDraft = (e?: React.FormEvent) => {
     e?.preventDefault();
     const d = draftEntry();
-    const ex = findExercise(draft.exercise);
+    const ex = findExercise(draft.exercise, { prefix: true }) ?? findExercise(draft.exercise);
     if (ex?.cardio) {
       // typed "running" in the lift box: move it to the cardio row instead of erroring
       setCardio((c) => ({ ...c, exercise: ex.name }));
@@ -134,8 +134,10 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       const r = await fetch("/api/import", { method: "POST", body: await file.text() });
       const j = await r.json().catch(() => ({}));
       setImp(
-        r.ok
-          ? `Imported ${j.sets} sets over ${j.days} days from ${j.format}${j.alreadyImported ? ` (${j.alreadyImported} sets from days you'd already imported were skipped)` : ""}${j.skipped ? `, ${j.skipped} rows not recognised` : ""}. Open your floor to see the new you.`
+        r.ok && j.sets === 0
+          ? `Nothing new: all ${j.alreadyImported} sets in this file were already imported.`
+          : r.ok
+          ? `Imported ${j.sets} sets over ${j.days} days from ${j.format}${j.alreadyImported ? ` (${j.alreadyImported} already-imported sets skipped)` : ""}${j.skipped ? `, ${j.skipped} rows not recognised` : ""}. Open your floor to see the new you.`
           : j.error ?? "Import failed.",
       );
     } catch {
@@ -168,7 +170,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
+              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="e.g. bench, squat, curl" />
             </label>
             <label>
               SETS
@@ -192,7 +194,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
             <button style={{ flex: "0 0 auto" }}>+ ADD</button>
             <span className="muted">
               {pending && pending !== "unknown"
-                ? `works: ${muscles(pending.exercise)}`
+                ? `→ ${pending.exercise} · works ${muscles(pending.exercise)}`
                 : pending === "unknown"
                   ? findExercise(draft.exercise)?.cardio
                     ? "that's cardio: press ADD to move it to the cardio row"

@@ -177,7 +177,7 @@ export function InspectCard({
         {!series ? (
           <p className="muted">loading…</p>
         ) : !series.length ? (
-          <p className="muted">Couldn&apos;t load the timelapse. Check your connection and reopen the card.</p>
+          <p className="muted">Couldn&apos;t load the timelapse. Close the card and try again in a moment.</p>
         ) : m.weekly === 0 && m.days <= 1 && !m.today ? (
           <p className="muted">{isMe ? "You haven't" : `${m.name} hasn't`} logged a workout yet.</p>
         ) : (

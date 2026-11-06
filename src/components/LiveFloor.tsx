@@ -102,8 +102,9 @@ export default function LiveFloor({
   }, [code, router, toast]);
 
   const loadSeries = useCallback(async (id: string): Promise<Snapshot[]> => {
-    const r = await fetch(`/api/series?id=${id}&today=${localDate()}`); // throws offline: card shows an error line
-    return r.ok ? (await r.json()).series : [];
+    const r = await fetch(`/api/series?id=${id}&today=${localDate()}`);
+    if (!r.ok) throw new Error(String(r.status)); // card shows an error line
+    return (await r.json()).series;
   }, []);
   const onEmote = async (to: string, kind: EmoteKind) => {
     const r = await fetch("/api/emote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, kind }) }).catch(() => null);

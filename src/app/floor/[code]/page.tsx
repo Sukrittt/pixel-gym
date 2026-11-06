@@ -1,4 +1,6 @@
+import { cache } from "react";
 import JoinForms from "@/components/JoinForms";
+import MemberStrip from "@/components/MemberStrip";
 import LiveFloor from "@/components/LiveFloor";
 import { PARAMS, type Param } from "@/lib/body";
 import { floorViewNow } from "@/lib/floor";
@@ -18,10 +20,21 @@ function parseGain(raw: string | string[] | undefined): Partial<Record<Param, nu
   return out;
 }
 
+// one storage read per request, shared by the title and the page
+const floorFor = cache((code: string) => readFloor(code, true));
+
 export async function generateMetadata({ params }: PageProps<"/floor/[code]">) {
   const { code } = await params;
-  const floor = await readFloor(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+  const floor = await floorFor(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
   return { title: floor ? `${floor.name} · Pixel Gym` : "Not found · Pixel Gym" };
+}
+
+/** "A, B and C" / "A, B, C, D, E and 3 more" */
+function list(names: string[]) {
+  const shown = names.slice(0, 5);
+  const rest = names.length - shown.length;
+  if (rest > 0) return `${shown.join(", ")} and ${rest} more`;
+  return shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}` : shown[0];
 }
 
 export default async function FloorPage({ params, searchParams }: PageProps<"/floor/[code]">) {
@@ -32,7 +45,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
   const s = await currentMember(true);
   if (!s || s.doc.code !== c) {
     const sess = await readSession();
-    const floor = await readFloor(c, true);
+    const floor = await floorFor(c);
     if (!floor) {
       // hand-typed look-alike (2Q5Y8D for ZQ5Y8D): send them to the real floor
       const real = await resolveCode(c, true);
@@ -41,15 +54,18 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
     }
     const names = floor.members.map((m) => m.name);
     return (
-      <div style={{ maxWidth: 600 }}>
+      <div style={{ maxWidth: 980 }}>
         <h1>{floor.name}</h1>
         <p>
-          {names.length === 1 ? `${names[0]} invited you` : `${names.slice(0, 5).join(", ")}${names.length > 5 ? ` and ${names.length - 5} more` : ""} train here`}. Pick a name to step onto the
+          {names.length === 1 ? `${names[0]} invited you` : `${list(names)} train here`}. Pick a name to step onto the
           floor. Your avatar starts on the bench outside until you log a workout.
         </p>
         {sess?.code === c && <p className="banner warn">We couldn&apos;t find your spot on this floor any more. Joining again creates a new avatar.</p>}
         {sess && sess.code !== c && <p className="muted">You&apos;re signed in on another floor. Joining here moves you to this one.</p>}
-        <JoinForms code={c} />
+        <div className="join-grid">
+          <JoinForms code={c} />
+          <MemberStrip members={floorViewNow(floor, await requestToday()).members} />
+        </div>
       </div>
     );
   }
