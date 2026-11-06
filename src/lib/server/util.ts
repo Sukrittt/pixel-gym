@@ -20,7 +20,8 @@ export function cleanName(raw: unknown, max = 12): string | null {
   s = s.trim();
   return s.length >= 1 ? s : null;
 }
-const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+// the pixel font is uppercase-only; capitalise each word for the DOM ("KOFI TEN" -> "Kofi Ten")
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s'-])\S/g, (c) => c.toUpperCase());
 
 export function newMember(name: string, today: string): Member {
   return {

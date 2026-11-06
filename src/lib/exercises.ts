@@ -37,7 +37,7 @@ export const EXERCISES: Exercise[] = [
   { name: "Deadlift", m: { legs: 0.8, back: 0.9, core: 0.3 }, aliases: ["conventional deadlift"] },
   { name: "Pull Up", m: { back: 1, arms: 0.5 }, bw: 1, aliases: ["pullup", "pull-up"] },
   { name: "Chin Up", m: { back: 0.8, arms: 0.8 }, bw: 1, aliases: ["chinup", "chin-up"] },
-  { name: "Lat Pulldown", m: { back: 1, arms: 0.4 }, aliases: ["pulldown"] },
+  { name: "Lat Pulldown", m: { back: 1, arms: 0.4 }, aliases: ["pulldown", "lats", "lat pull"] },
   { name: "Barbell Row", m: { back: 1, arms: 0.4, shoulders: 0.2 }, aliases: ["bent over row", "pendlay row"] },
   { name: "Dumbbell Row", m: { back: 1, arms: 0.4 }, aliases: ["one arm row", "single arm row"] },
   { name: "Seated Cable Row", m: { back: 1, arms: 0.4 }, aliases: ["cable row", "seated row"] },

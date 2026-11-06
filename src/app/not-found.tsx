@@ -9,7 +9,7 @@ export default async function NotFound() {
   return (
     <div className="panel" style={{ maxWidth: 560 }}>
       <h1 style={{ color: "var(--ink)", textShadow: "none", fontSize: 28 }}>Nothing here</h1>
-      <p>That floor or page doesn&apos;t exist. Check the invite link with whoever sent it, or start your own floor.</p>
+      <p>That floor or page doesn&apos;t exist. Check the invite link with whoever sent it{s ? "" : ", or start your own floor"}.</p>
       <div className="actions">
         {s && (
           <Link className="btn primary" href={`/floor/${s.doc.code}`}>BACK TO MY FLOOR</Link>

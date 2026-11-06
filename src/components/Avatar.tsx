@@ -223,7 +223,7 @@ export function drawShareCard(m: MemberView, floorName: string): HTMLCanvasEleme
 
 export function downloadCard(m: MemberView, floorName: string) {
   const a = document.createElement("a");
-  a.download = `pixel-gym-${m.name.toLowerCase()}.png`;
+  a.download = `pixel-gym-${m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
   a.href = drawShareCard(m, floorName).toDataURL("image/png");
   a.click();
 }

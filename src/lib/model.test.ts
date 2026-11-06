@@ -174,6 +174,7 @@ describe("exercise search while typing", () => {
     expect(findExercise("rows", p)?.name).toBe("Barbell Row");
     expect(findExercise("press", p)?.name).toBe("Bench Press"); // the typed text wins over its singular
     expect(findExercise("hams", p)?.name).toBe("Leg Curl");
+    expect(findExercise("lats", p)?.name).toBe("Lat Pulldown");
     expect(findExercise("front s", p)?.name).toBe("Front Squat");
     expect(findExercise("be", p)).toBeUndefined(); // too short to guess
     expect(findExercise("Mystery Machine 3000", p)).toBeUndefined();

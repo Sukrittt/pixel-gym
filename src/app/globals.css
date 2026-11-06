@@ -46,7 +46,7 @@ label { font-size: 11px; display: grid; gap: 4px; color: var(--ink); }
 /* floor */
 .floor { position: relative; }
 .floor-wrap { position: relative; overflow: auto; border: 3px solid #000; box-shadow: 4px 4px 0 #000; background: #000; max-height: 82vh; }
-.floor-wrap canvas { position: relative; z-index: 1; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.floor-wrap canvas { position: relative; z-index: 1; display: block; margin: 0 auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .zoom { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 6px; }
 .zoom button { padding: 3px 7px; font-size: 10px; }
 .zoom button.on { background: var(--accent); }
