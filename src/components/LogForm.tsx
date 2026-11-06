@@ -8,6 +8,12 @@ import { localDate } from "@/lib/floor";
 const LIFTS = EXERCISES.filter((e) => !e.cardio);
 const CARDIO = EXERCISES.filter((e) => e.cardio);
 type Lift = Extract<Entry, { kind: "lift" }>;
+/** An editable row: numbers stay strings while typing so clearing a field doesn't snap to 0. */
+type Row = { exercise: string; sets: string; reps: string; kg: string };
+const LIMITS = { sets: 30, reps: 200, kg: 700 } as const;
+const toRow = (l: Lift): Row => ({ exercise: l.exercise, sets: String(l.sets), reps: String(l.reps), kg: String(l.kg) });
+const clampNum = (v: string, max: number, min = 0) => Math.min(max, Math.max(min, Number(v) || 0));
+const toLift = (r: Row): Lift => lift(r.exercise, clampNum(r.sets, LIMITS.sets, 1), clampNum(r.reps, LIMITS.reps, 1), clampNum(r.kg, LIMITS.kg));
 
 const lift = (exercise: string, sets: number, reps: number, kg: number): Lift => ({ kind: "lift", exercise, sets, reps, kg });
 const TEMPLATES: Record<string, Lift[]> = {
@@ -29,7 +35,7 @@ const muscles = (name: string) => {
 
 export default function LogForm({ code }: { code: string }) {
   const router = useRouter();
-  const [rows, setRows] = useState<Lift[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [draft, setDraft] = useState({ exercise: "", sets: "3", reps: "8", kg: "" });
   const [cardio, setCardio] = useState({ exercise: "Running", minutes: "", km: "" });
   const [bw, setBw] = useState("");
@@ -42,20 +48,27 @@ export default function LogForm({ code }: { code: string }) {
     if (!draft.exercise.trim()) return null;
     const ex = findExercise(draft.exercise);
     if (!ex || ex.cardio) return "unknown";
-    return lift(ex.name, +draft.sets || 1, +draft.reps || 1, +draft.kg || 0);
+    return toLift({ ...draft, exercise: ex.name });
   };
 
   const addDraft = (e?: React.FormEvent) => {
     e?.preventDefault();
     const d = draftEntry();
+    const ex = findExercise(draft.exercise);
+    if (ex?.cardio) {
+      // typed "running" in the lift box: move it to the cardio row instead of erroring
+      setCardio((c) => ({ ...c, exercise: ex.name }));
+      setDraft((x) => ({ ...x, exercise: "" }));
+      return setMsg(`${ex.name} is cardio: set its minutes in the cardio row below.`);
+    }
     if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions.`);
     if (!d) return setMsg("Type an exercise first.");
     setMsg("");
-    setRows((v) => [...v, d]);
+    setRows((v) => [...v, toRow(d)]);
     setDraft((x) => ({ ...x, exercise: "" }));
   };
 
-  const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: +v || 0 } : r)));
+  const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   const save = async (rest = false) => {
     let list: Entry[] = [];
@@ -63,7 +76,7 @@ export default function LogForm({ code }: { code: string }) {
     else {
       const d = draftEntry();
       if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions or clear it.`);
-      list = [...rows, ...(d ? [d] : [])].map((r) => ({ ...r, sets: Math.max(1, r.sets), reps: Math.max(1, r.reps) }));
+      list = [...rows.map(toLift), ...(d ? [d] : [])];
       if (+cardio.minutes > 0) list.push({ kind: "cardio", exercise: cardio.exercise, minutes: +cardio.minutes, km: +cardio.km || 0 });
       if (+bw > 0) list.push({ kind: "weight", bw: +bw });
     }
@@ -78,7 +91,7 @@ export default function LogForm({ code }: { code: string }) {
         .filter(([, v]) => Math.abs(v as number) >= 0.05)
         .map(([k, v]) => `${k}:${v}`)
         .join("|");
-      router.push(`/floor/${j.code ?? code}?gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
+      router.push(`/floor/${j.code ?? code}?logged=1&gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
     } catch (x) {
       setBusy(false);
       setMsg((x as Error).message || "Network error, try again.");
@@ -104,12 +117,12 @@ export default function LogForm({ code }: { code: string }) {
         <h3>START FROM A TEMPLATE</h3>
         <div className="lab-row" style={{ marginTop: 0 }}>
           {Object.keys(TEMPLATES).map((k) => (
-            <button key={k} type="button" onClick={() => setRows(TEMPLATES[k].map((r) => ({ ...r })))}>
+            <button key={k} type="button" onClick={() => setRows((v) => [...v, ...TEMPLATES[k].map(toRow)])}>
               {k}
             </button>
           ))}
         </div>
-        <p className="muted">Then tweak the numbers to what you actually did.</p>
+        <p className="muted">Adds that workout to your list. Then tweak the numbers to what you actually did.</p>
 
         <form onSubmit={addDraft}>
           <h3>ADD A LIFT</h3>
@@ -128,7 +141,7 @@ export default function LogForm({ code }: { code: string }) {
             </label>
             <label>
               KG
-              <input type="number" inputMode="decimal" min={0} max={700} step={0.5} value={draft.kg} onChange={(e) => setDraft({ ...draft, kg: e.target.value })} placeholder="0 = BW" />
+              <input type="number" inputMode="decimal" min={0} max={700} step={0.5} value={draft.kg} onChange={(e) => setDraft({ ...draft, kg: e.target.value })} placeholder="BW" title="leave empty or 0 for bodyweight exercises" />
             </label>
           </div>
           <datalist id="exercises">
@@ -138,11 +151,24 @@ export default function LogForm({ code }: { code: string }) {
           </datalist>
           <p className="row" style={{ alignItems: "center" }}>
             <button style={{ flex: "0 0 auto" }}>+ ADD</button>
-            <span className="muted">{pending && pending !== "unknown" ? `works: ${muscles(pending.exercise)}` : pending === "unknown" ? "not in the exercise list" : ""}</span>
+            <span className="muted">
+              {pending && pending !== "unknown"
+                ? `works: ${muscles(pending.exercise)}`
+                : pending === "unknown"
+                  ? findExercise(draft.exercise)?.cardio
+                    ? "that's cardio: press ADD to move it to the cardio row"
+                    : "not in the exercise list"
+                  : ""}
+            </span>
           </p>
         </form>
 
         {rows.length > 0 && (
+          <>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ flex: "0 0 auto" }}>TODAY&apos;S LIST ({rows.length})</h3>
+            <button type="button" className="link" style={{ flex: "0 0 auto" }} onClick={() => setRows([])}>clear all</button>
+          </div>
           <table className="sets">
             <thead>
               <tr>
@@ -162,7 +188,7 @@ export default function LogForm({ code }: { code: string }) {
                   </td>
                   {(["sets", "reps", "kg"] as const).map((k) => (
                     <td key={k}>
-                      <input type="number" inputMode="decimal" min={0} value={r[k]} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${r.exercise} ${k}`} />
+                      <input type="number" inputMode="decimal" min={k === "kg" ? 0 : 1} max={LIMITS[k]} step={k === "kg" ? 0.5 : 1} value={r[k]} placeholder={k === "kg" ? "BW" : ""} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${r.exercise} ${k}`} />
                     </td>
                   ))}
                   <td>
@@ -174,9 +200,10 @@ export default function LogForm({ code }: { code: string }) {
               ))}
             </tbody>
           </table>
+          </>
         )}
 
-        <h3>CARDIO (OPTIONAL)</h3>
+        <h3>CARDIO &amp; BODYWEIGHT (OPTIONAL)</h3>
         <div className="row">
           <label>
             TYPE

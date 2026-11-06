@@ -66,17 +66,21 @@ export function Timelapse({ series, look }: { series: Snapshot[]; look: MemberVi
           <ParamBars p={s.p} compare={series[0].p} />
         </div>
       </div>
-      <div className="tl-controls">
-        <button
-          onClick={() => {
-            if (idx >= series.length - 1) setI(0);
-            setPlaying((v) => !v);
-          }}
-        >
-          {playing ? "PAUSE" : "PLAY"}
-        </button>
-        <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" />
-      </div>
+      {series.length > 1 ? (
+        <div className="tl-controls">
+          <button
+            onClick={() => {
+              if (idx >= series.length - 1) setI(0);
+              setPlaying((v) => !v);
+            }}
+          >
+            {playing ? "PAUSE" : "PLAY"}
+          </button>
+          <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" />
+        </div>
+      ) : (
+        <p className="muted">Day one. Come back tomorrow and this becomes a timelapse.</p>
+      )}
     </div>
   );
 }
@@ -86,13 +90,14 @@ export function InspectCard({
 }: {
   m: MemberView;
   onClose: () => void;
-  onEmote?: (k: EmoteKind) => void;
+  onEmote?: (k: EmoteKind) => Promise<boolean> | void;
   loadSeries: () => Promise<Snapshot[]>;
   isMe?: boolean;
   floorName: string;
 }) {
   const [series, setSeries] = useState<Snapshot[] | null>(null);
-  const [sent, setSent] = useState<EmoteKind | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;
     loadSeries().then((s) => live && setSeries(s));
@@ -100,9 +105,30 @@ export function InspectCard({
       live = false;
     };
   }, [loadSeries]);
+  // proper dialog: focus inside, Escape closes, focus returns to the trigger
+  useEffect(() => {
+    const back = document.activeElement as HTMLElement | null;
+    cardRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      back?.focus?.();
+    };
+  }, [onClose]);
+  const emote = async (k: EmoteKind) => {
+    setSent("sending…");
+    const ok = await onEmote?.(k);
+    setSent(ok === false ? "slow down a sec" : "sent!");
+  };
+  const columns: [string, { p: Params; sat: number }][] = [
+    ["START", m.snaps.day1],
+    ...(m.days > 30 ? ([["30 DAYS AGO", m.snaps.ago30]] as [string, { p: Params; sat: number }][]) : []),
+    ["TODAY", { p: m.params, sat: m.sat }],
+  ];
   return (
-    <div className="modal" onClick={onClose} role="dialog" aria-label={`${m.name} inspection card`}>
-      <div className="card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal" onClick={onClose}>
+      <div className="card" ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${m.name} inspection card`} onClick={(e) => e.stopPropagation()}>
         <div className="card-head">
           <h2>{m.name}</h2>
           <span className="muted">
@@ -113,13 +139,7 @@ export function InspectCard({
           </button>
         </div>
         <div className="compare">
-          {(
-            [
-              ["DAY 1", m.snaps.day1],
-              ["30 DAYS AGO", m.snaps.ago30],
-              ["TODAY", { p: m.params, sat: m.sat }],
-            ] as const
-          ).map(([label, s]) => (
+          {columns.map(([label, s]) => (
             <figure key={label}>
               <SpriteView opts={{ params: s.p, look: m.look, sat: s.sat }} scale={4} label={`${m.name} ${label}`} />
               <figcaption>{label}</figcaption>
@@ -130,11 +150,11 @@ export function InspectCard({
         <div className="actions">
           {onEmote && !isMe &&
             (["bump", "flex", "clap"] as const).map((k) => (
-              <button key={k} onClick={() => (onEmote(k), setSent(k))} disabled={!!sent}>
+              <button key={k} onClick={() => emote(k)} disabled={sent === "sending…"}>
                 {k === "bump" ? "👊 FIST BUMP" : k === "flex" ? "💪 FLEX" : "👏 CLAP"}
               </button>
             ))}
-          {sent && <span className="muted">sent!</span>}
+          {sent && <span className="muted" role="status">{sent}</span>}
           <button onClick={() => downloadCard(m, floorName)}>⬇ SHARE CARD</button>
         </div>
         <h3>TIMELAPSE</h3>
@@ -166,10 +186,10 @@ export function drawShareCard(m: MemberView, floorName: string): HTMLCanvasEleme
   drawText(ctx, `STREAK ${m.streak}D · WEEK ${(m.weekly / 1000).toFixed(1)}K KG`, 120, 50, "#6b4a35");
   PARAMS.forEach((k, i) => {
     const y = 64 + i * 10;
-    drawText(ctx, k.slice(0, 5), 120, y, "#2a1c16");
-    R(148, y, 120, 5, "#00000030");
-    R(148, y, Math.round(m.params[k] * 12), 5, k === "bodyfat" ? "#e0a32a" : "#3fa36b");
-    drawText(ctx, m.params[k].toFixed(1), 274, y, "#2a1c16");
+    drawText(ctx, k, 120, y, "#2a1c16");
+    R(162, y, 110, 5, "#00000030");
+    R(162, y, Math.round(m.params[k] * 11), 5, k === "bodyfat" ? "#e0a32a" : "#3fa36b");
+    drawText(ctx, m.params[k].toFixed(1), 278, y, "#2a1c16");
   });
   return c;
 }

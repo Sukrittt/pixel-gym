@@ -17,6 +17,7 @@ export type MemberView = {
   weekly: number;
   today: DayAgg | null;
   snaps: { day1: Snap; ago30: Snap; now: Snap };
+  days: number; // days of history (for hiding empty comparisons)
 };
 export type FloorView = { code: string; name: string; today: string; members: MemberView[]; emotes: Emote[]; demo?: boolean };
 
@@ -36,7 +37,9 @@ export function memberView(m: Member, today: string, now: number): MemberView {
     streak: streak(m.days, today),
     weekly: weeklyVolume(m.days, today),
     today: trainedToday ? day : null,
-    snaps: { day1: snap(series[0]), ago30: snap(series[Math.max(0, series.length - 31)]), now: snap(last) },
+    // day1 = the starting body before any training; ago30 only meaningful with 30+ days
+    snaps: { day1: { p: m.start, sat: series[0].sat }, ago30: snap(series[Math.max(0, series.length - 31)]), now: snap(last) },
+    days: series.length,
   };
 }
 

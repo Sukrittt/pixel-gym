@@ -283,8 +283,9 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
       if (wrap && mine && !followed.current && wrap.scrollWidth > wrap.clientWidth + 2) {
         followed.current = true;
         const sc = scaleRef.current;
-        wrap.scrollLeft = mine.x * sc - wrap.clientWidth / 2;
-        wrap.scrollTop = (mine.y - 30) * sc - wrap.clientHeight / 2;
+        // center on where you're headed, not the door you spawn at
+        wrap.scrollLeft = mine.spot.x * sc - wrap.clientWidth / 2;
+        wrap.scrollTop = (mine.spot.y - 30) * sc - wrap.clientHeight / 2;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -314,7 +315,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
     <div className="floor">
       <div className="zoom">
         {(["fit", 1, 2, 3] as const).map((z) => (
-          <button key={z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
+          <button key={z} className={(zoom === "fit" && fitScale < 0.85 ? z === 1 : zoom === z) ? "on" : ""} onClick={() => setZoom(z)} aria-pressed={zoom === z}>
             {z === "fit" ? "FIT" : `${z}X`}
           </button>
         ))}

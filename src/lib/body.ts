@@ -169,7 +169,8 @@ export function applyEntry(h: History, e: Entry, date: string, at: string): { pr
   if (e.kind === "cardio") {
     day.cardioMin += e.minutes;
     day.km += e.km;
-    if (latest) Object.assign(day, { zone: "cardio", focus: "Cardio" });
+    // a cardio finisher doesn't move a lifting day off its station
+    if (latest && day.sets === 0) Object.assign(day, { zone: "cardio", focus: "Cardio" });
     return { pr: false };
   }
   const ex = findExercise(e.exercise);

@@ -58,12 +58,30 @@ export function cleanEntry(e: unknown): Entry | null {
 }
 
 const SWAP: Record<string, string> = { "2": "Z", Z: "2", "5": "S", S: "5", "0": "O", O: "0", "1": "I", I: "1", "8": "B", B: "8" };
-/** Codes to try for a typed invite code: as typed, then with look-alikes swapped. */
+/**
+ * Codes to try for a typed invite code: as typed first, then every combination
+ * of look-alike swaps per position (old codes mix e.g. Z and 5: "2Q5Y8D" -> "ZQ5Y8D").
+ */
 export function codeVariants(code: string): string[] {
-  const out = [code];
-  for (const dir of [/[25018]/g, /[ZSOIB]/g]) {
-    const v = code.replace(dir, (c) => SWAP[c]);
-    if (!out.includes(v)) out.push(v);
+  let out = [""];
+  for (const c of code) {
+    const alts = SWAP[c] ? [c, SWAP[c]] : [c];
+    out = out.flatMap((p) => alts.map((a) => p + a));
+    if (out.length > 64) return [code]; // pathological input: exact match only
+  }
+  return out; // first entry is always the code as typed
+}
+
+const LOOK_MAX = { skin: 5, hair: 5, hairColor: 6, shirt: 7, shorts: 5 } as const;
+/** Validate a client-chosen look. */
+export function cleanLook(v: unknown): Member["look"] | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const out = {} as Member["look"];
+  for (const [k, max] of Object.entries(LOOK_MAX) as [keyof typeof LOOK_MAX, number][]) {
+    const n = Number(o[k]);
+    if (!Number.isInteger(n) || n < 0 || n >= max) return null;
+    out[k] = n;
   }
   return out;
 }

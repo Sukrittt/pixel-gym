@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Silkscreen } from "next/font/google";
+import TzCookie from "@/components/TzCookie";
 import { readSession } from "@/lib/server/session";
 import "./globals.css";
 
@@ -16,6 +17,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={pixel.variable}>
       <body>
+        <TzCookie />
         <nav className="nav">
           <Link href="/" className="brand">PIXEL GYM</Link>
           {s && <Link href={`/floor/${s.code}`}>My floor</Link>}

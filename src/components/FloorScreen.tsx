@@ -11,12 +11,13 @@ export default function FloorScreen({
 }: {
   view: FloorView;
   meId?: string;
-  onEmote?: (to: string, k: EmoteKind) => void;
+  onEmote?: (to: string, k: EmoteKind) => Promise<boolean> | void;
   loadSeries: (id: string) => Promise<Snapshot[]>;
 }) {
   const [sel, setSel] = useState<MemberView | null>(null);
   const selId = sel?.id;
   const load = useCallback(() => (selId ? loadSeries(selId) : Promise.resolve([])), [selId, loadSeries]);
+  const close = useCallback(() => setSel(null), []);
   const fresh = sel && (view.members.find((m) => m.id === sel.id) ?? sel);
   return (
     <>
@@ -37,7 +38,7 @@ export default function FloorScreen({
           m={fresh}
           isMe={fresh.id === meId}
           floorName={view.name}
-          onClose={() => setSel(null)}
+          onClose={close}
           onEmote={onEmote && ((k) => onEmote(fresh.id, k))}
           loadSeries={load}
         />

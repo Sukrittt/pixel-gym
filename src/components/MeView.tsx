@@ -11,11 +11,22 @@ type Me = { code: string; floorName: string; me: MemberView; series: Snapshot[];
 export default function MeView() {
   const [data, setData] = useState<Me | null>(null);
   const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     fetch(`/api/me?today=${localDate()}`)
       .then(async (r) => (r.ok ? setData(await r.json()) : setErr((await r.json()).error)))
       .catch(() => setErr("Could not load."));
   }, []);
+  const LOOK_MAX = { skin: 5, hair: 5, hairColor: 6, shirt: 7, shorts: 5 };
+  const setLook = async (k: keyof typeof LOOK_MAX) => {
+    if (!data) return;
+    const look = { ...data.me.look, [k]: (data.me.look[k] + 1) % LOOK_MAX[k] };
+    setData({ ...data, me: { ...data.me, look } }); // optimistic
+    setSaving(true);
+    const r = await fetch("/api/look", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ look }) }).catch(() => null);
+    setSaving(false);
+    if (!r?.ok) setErr("Couldn't save your look. Try again.");
+  };
   if (err) return <p className="err">{err}</p>;
   if (!data) return <p className="muted">Loading…</p>;
   const { me, series, days } = data;
@@ -34,17 +45,7 @@ export default function MeView() {
           <Link className="btn primary" href="/log">+ LOG</Link>
           <Link className="btn" href={`/floor/${data.code}`}>FLOOR</Link>
           <button onClick={() => downloadCard(me, data.floorName)}>⬇ SHARE CARD</button>
-          <button
-            onClick={async () => {
-              const r = await fetch("/api/look", { method: "POST" });
-              if (r.ok) {
-                const { look } = await r.json();
-                setData((d) => d && { ...d, me: { ...d.me, look } });
-              }
-            }}
-          >
-            ↻ NEW LOOK
-          </button>
+
         </div>
       </div>
       <div className="grid2">
@@ -53,6 +54,14 @@ export default function MeView() {
           <div className="tl-stage">
             <SpriteView opts={{ params: me.params, look: me.look, sat: me.sat }} scale={4} label="you today" />
             <ParamBars p={me.params} compare={me.snaps.day1.p} />
+          </div>
+          <h3>YOUR LOOK</h3>
+          <div className="lab-row" style={{ marginTop: 0 }}>
+            {(["skin", "hair", "hairColor", "shirt", "shorts"] as const).map((k) => (
+              <button key={k} onClick={() => setLook(k)} disabled={saving}>
+                {k === "hairColor" ? "hair color" : k} ↻
+              </button>
+            ))}
           </div>
           <h3>LAST 120 DAYS</h3>
           <div className="heat" aria-label="training heatmap">

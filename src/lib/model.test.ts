@@ -118,3 +118,26 @@ describe("csv parser", () => {
     expect(r.rows[2].entry).toMatchObject({ minutes: 10, km: 2 });
   });
 });
+
+describe("floor helpers", () => {
+  it("look-alike codes resolve per position (reported 2Q5Y8D -> ZQ5Y8D)", async () => {
+    const { codeVariants } = await import("./server/util");
+    const v = codeVariants("2Q5Y8D");
+    expect(v[0]).toBe("2Q5Y8D");
+    expect(v).toContain("ZQ5Y8D");
+    expect(v).toContain("ZQSYBD");
+    expect(codeVariants("47NWXN")).toEqual(["47NWXN"]);
+    expect(codeVariants("Z".repeat(8))).toEqual(["Z".repeat(8)]); // capped
+  });
+
+  it("a cardio finisher keeps a lifting day at its station", () => {
+    const h = fresh();
+    applyEntry(h, { kind: "lift", exercise: "Squat", sets: 5, reps: 5, kg: 100 }, "2026-01-01", "2026-01-01T08:00:00.000Z");
+    applyEntry(h, { kind: "lift", exercise: "Bicep Curl", sets: 1, reps: 10, kg: 10 }, "2026-01-01", "2026-01-01T08:10:00.000Z");
+    applyEntry(h, { kind: "cardio", minutes: 10, km: 1.5 }, "2026-01-01", "2026-01-01T08:20:00.000Z");
+    expect(h.days["2026-01-01"]).toMatchObject({ zone: "squat", focus: "Legs", cardioMin: 10 });
+    const c = fresh();
+    applyEntry(c, { kind: "cardio", minutes: 30, km: 5 }, "2026-01-01", "2026-01-01T08:00:00.000Z");
+    expect(c.days["2026-01-01"].zone).toBe("cardio");
+  });
+});

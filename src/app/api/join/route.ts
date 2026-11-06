@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { safeToday } from "@/lib/floor";
 import { setSession } from "@/lib/server/session";
-import { mutateFloor } from "@/lib/server/store";
+import { mutateFloor, readFloor } from "@/lib/server/store";
 import { cleanName, codeVariants, newMember } from "@/lib/server/util";
 
 const MAX_MEMBERS = 20;
@@ -13,15 +13,21 @@ export async function POST(req: Request) {
   if (!name) return NextResponse.json({ error: "Pick a name (letters and numbers)." }, { status: 400 });
   if (code.length < 4 || code.length > 8) return NextResponse.json({ error: "That invite code looks wrong." }, { status: 400 });
   const me = newMember(name, safeToday(body.today));
-  let r = null;
+  // exact code first, then look-alike variants; only touch a floor that exists
+  let target: string | null = null;
   for (const c of codeVariants(code)) {
-    r = await mutateFloor(c, (doc) => {
-      if (doc.members.length >= MAX_MEMBERS) return "full";
-      doc.members.push(me);
-      return "ok";
-    });
-    if (r) break;
+    if (await readFloor(c, true)) {
+      target = c;
+      break;
+    }
   }
+  const r = target
+    ? await mutateFloor(target, (doc) => {
+        if (doc.members.length >= MAX_MEMBERS) return "full";
+        doc.members.push(me);
+        return "ok";
+      })
+    : null;
   if (!r) return NextResponse.json({ error: "No floor with that code." }, { status: 404 });
   if (r.result === "full") return NextResponse.json({ error: `Floor is full (${MAX_MEMBERS} max).` }, { status: 409 });
   await setSession(r.doc.code, me.id, me.key!);

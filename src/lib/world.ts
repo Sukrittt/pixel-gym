@@ -523,7 +523,7 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
   drawText(ctx, "WALL OF FAME", x0 + w / 2 - textWidth("WALL OF FAME") / 2, y0 + 4, "#ffd23f");
   if (!entries.length) {
     const msg = "LOG A WORKOUT TO GET ON THE WALL";
-    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 24, "#c9a87a");
+    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 22, "#f3e6c8");
   }
   entries.slice(0, 7).forEach((e, i) => {
     const fx = x0 + 8 + i * 28, fy = y0 + 13;
@@ -534,6 +534,6 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
     ctx.drawImage(e.portrait, 7, 1, 18, 20, fx, fy, 18, 20);
     if (e.streak >= 10) R(fx + 17, fy - 3, 2, 2, "#ffffff");
     drawText(ctx, String(i + 1), fx - 1, fy + 22, "#ffd23f");
-    drawText(ctx, e.name.slice(0, 3), fx + 6, fy + 22, "#f3e6c8");
+    drawText(ctx, e.name.slice(0, 4), fx + 5, fy + 22, "#f3e6c8");
   });
 }
