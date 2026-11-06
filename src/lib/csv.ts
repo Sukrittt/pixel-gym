@@ -49,6 +49,7 @@ const COLS = {
   miles: ["distancemiles", "distancemi"],
   seconds: ["durationseconds", "seconds"],
   setType: ["settype"],
+  setIdx: ["setindex", "setorder"],
 } as const;
 
 const MONTHS: Record<string, number> = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
@@ -71,7 +72,19 @@ export function parseDate(s: string): { date: string; at: string } | null {
   return null;
 }
 
-export type ImportRow = { date: string; at: string; entry: Entry };
+/** key: stable id of this set in the source app, for dedupe across re-imports. */
+export type ImportRow = { date: string; at: string; entry: Entry; key: string };
+
+/** Two independent 32-bit FNV-1a variants, fixed-width base36 (64 bits): collisions negligible at 20k keys. */
+export function hash64(s: string): string {
+  let a = 0x811c9dc5, b = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x01000193 + 2);
+  }
+  return (a >>> 0).toString(36).padStart(7, "0") + (b >>> 0).toString(36).padStart(7, "0");
+}
 export type ImportResult = { rows: ImportRow[]; skipped: number; format: "hevy" | "strong" | "unknown" };
 
 /** Parse a Hevy or Strong CSV export into log entries (one per set). */
@@ -88,6 +101,7 @@ export function parseWorkoutCsv(text: string): ImportResult {
   const num = (r: string[], i: number) => (i < 0 ? 0 : parseFloat((r[i] ?? "").replace(",", ".")) || 0);
 
   const rows: ImportRow[] = [];
+  const nth = new Map<string, number>();
   let skipped = 0;
   for (const r of body) {
     const when = idx.date >= 0 ? parseDate(r[idx.date] ?? "") : null;
@@ -101,10 +115,19 @@ export function parseWorkoutCsv(text: string): ImportResult {
     const reps = num(r, idx.reps);
     const km = idx.km >= 0 ? num(r, idx.km) : num(r, idx.miles) * 1.609;
     const secs = num(r, idx.seconds);
+    // Dedupe key from what the source app itself identifies a set by (raw title + set index),
+    // never from our exercise mapping or unit conversion, so lbs/kg re-exports and alias edits
+    // can't change it. Without a set index: rounded numbers + nth identical set.
+    const title = exercise.toLowerCase();
+    const si = idx.setIdx >= 0 ? (r[idx.setIdx] ?? "").trim() : "";
+    const base = si ? JSON.stringify([when.at, title, si]) : JSON.stringify([when.date, when.at, title, reps, Math.round(kg), Math.round(km * 10), Math.round(secs)]);
+    const n = (nth.get(base) ?? 0) + 1;
+    nth.set(base, n);
+    const key = hash64(`${base}#${n}`);
     if (reps > 0) {
-      rows.push({ ...when, entry: { kind: "lift", exercise, sets: 1, reps, kg: Math.round(kg * 10) / 10 } });
+      rows.push({ ...when, key, entry: { kind: "lift", exercise, sets: 1, reps, kg: Math.round(kg * 10) / 10 } });
     } else if (secs > 0 || km > 0) {
-      rows.push({ ...when, entry: { kind: "cardio", exercise, minutes: Math.round(secs / 6) / 10, km } });
+      rows.push({ ...when, key, entry: { kind: "cardio", exercise, minutes: Math.round(secs / 6) / 10, km } });
     } else skipped++;
   }
   return { rows, skipped, format };

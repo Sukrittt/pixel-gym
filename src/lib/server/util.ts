@@ -3,27 +3,32 @@ import { DEFAULT_START, type Entry } from "../body";
 import { findExercise } from "../exercises";
 import type { Member } from "../floor";
 import { sanitize } from "../font";
+import { LOOK_MAX } from "../sprite";
 
 export const newId = (n = 8) => randomBytes(n).toString("hex");
 export function newCode() {
-  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // no look-alikes in the pixel font: Z/2, S/5, O/0, I/1, B/8
+  const A = "ACDEFGHJKLMNPQRTUVWXY34679";
   return Array.from(randomBytes(6), (b) => A[b % A.length]).join("");
 }
 
-export function cleanName(raw: unknown): string | null {
-  const s = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim().slice(0, 12);
+export function cleanName(raw: unknown, max = 12): string | null {
+  const full = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim();
+  let s = full.slice(0, max);
+  // don't cut mid-word when there's a space to break at
+  if (full.length > max && full[max] !== " " && s.lastIndexOf(" ") >= max / 2) s = s.slice(0, s.lastIndexOf(" "));
+  s = s.trim();
   return s.length >= 1 ? s : null;
 }
-const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+// the pixel font is uppercase-only; capitalise each word for the DOM ("KOFI TEN" -> "Kofi Ten")
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s'-])\S/g, (c) => c.toUpperCase());
 
 export function newMember(name: string, today: string): Member {
-  const h = [...name].reduce((a, c) => a * 31 + c.charCodeAt(0), 7);
-  const r = (n: number, k: number) => Math.abs(Math.floor(h / k)) % n;
   return {
     id: newId(6),
     key: newId(16),
     name: titleCase(name),
-    look: { skin: r(5, 1), hair: r(5, 7), hairColor: r(6, 13), shirt: r(7, 17), shorts: r(5, 23) },
+    look: randomLook(),
     joined: today,
     start: { ...DEFAULT_START },
     days: {},
@@ -56,4 +61,38 @@ export function cleanEntry(e: unknown): Entry | null {
     return { kind: "lift", exercise: ex.name, sets: Math.round(sets), reps: Math.round(reps), kg };
   }
   return null;
+}
+
+// only pairs that ever appeared in an issued alphabet (old: ...Z S B 2 5 8; new has none)
+const SWAP: Record<string, string> = { "2": "Z", Z: "2", "5": "S", S: "5", "8": "B", B: "8" };
+/**
+ * Codes to try for a typed invite code: as typed first, then every combination
+ * of look-alike swaps per position (old codes mix e.g. Z and 5: "2Q5Y8D" -> "ZQ5Y8D").
+ */
+export function codeVariants(code: string): string[] {
+  let out = [""];
+  for (const c of code) {
+    const alts = SWAP[c] ? [c, SWAP[c]] : [c];
+    out = out.flatMap((p) => alts.map((a) => p + a));
+    if (out.length > 16) return [code]; // at most 4 look-alikes; beyond that, exact match only
+  }
+  return out; // first entry is always the code as typed
+}
+
+/** Validate a client-chosen look. */
+export function cleanLook(v: unknown): Member["look"] | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const out = {} as Member["look"];
+  for (const [k, max] of Object.entries(LOOK_MAX) as [keyof typeof LOOK_MAX, number][]) {
+    const n = Number(o[k]);
+    if (typeof o[k] !== "number" || !Number.isInteger(n) || n < 0 || n >= max) return null;
+    out[k] = n;
+  }
+  return out;
+}
+
+export function randomLook(): Member["look"] {
+  const b = randomBytes(5);
+  return { skin: b[0] % 5, hair: [0, 1, 2, 3, 0, 1, 2, 3, 4][b[1] % 9], hairColor: b[2] % 6, shirt: b[3] % 7, shorts: b[4] % 5 };
 }

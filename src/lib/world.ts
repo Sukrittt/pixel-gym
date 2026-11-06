@@ -84,12 +84,12 @@ export type Pt = { x: number; y: number };
 const at = (tx: number, ty: number, dx = 8, dy = 12): Pt => ({ x: tx * TILE + dx, y: ty * TILE + dy });
 
 export const SPOTS: Record<Zone, Pt[]> = {
-  weights: [at(3, 5), at(7, 5), at(3, 8), at(7, 8), at(11, 7), at(5, 10), at(9, 10), at(11, 10)],
+  weights: [at(4, 6), at(8, 6), at(4, 9), at(8, 9), at(11, 6), at(6, 8), at(10, 10), at(2, 8)],
   squat: [15, 18, 21, 24].map((x) => at(x, 7)),
-  cardio: [at(28, 5, 16), at(31, 5, 16), at(34, 5, 16), at(30, 9), at(34, 9), at(36, 9)],
-  mat: [at(15, 14, 16), at(18, 14, 16), at(21, 14, 16), at(15, 18, 16), at(18, 18, 16), at(23, 17), at(22, 19)],
+  cardio: [at(28, 5, 16), at(31, 5, 16), at(34, 5, 16), at(30, 9), at(36, 9), at(37, 9)],
+  mat: [at(15, 15, 16), at(18, 15, 16), at(21, 15, 16), at(15, 18, 16), at(18, 18, 16), at(23, 17), at(22, 19)],
   bar: [at(28, 16), at(31, 15), at(33, 15), at(35, 15), at(32, 18), at(36, 18)],
-  lockers: [at(5, 14), at(3, 14), at(6, 17), at(3, 17), at(9, 16), at(10, 13)],
+  lockers: [at(3, 17), at(6, 17), at(8, 16), at(10, 17), at(11, 16), at(3, 19)],
   outside: [8, 9, 10, 15, 16, 17, 22, 23, 24, 30, 31, 32].map((x) => at(x, 22, 8, 10)),
 };
 export const SPAWN: Pt = at(4, 19);
@@ -521,6 +521,10 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
   R(x0, y0, w, 44, "#5d3f2a");
   R(x0 + 2, y0 + 2, w - 4, 40, "#3a2618");
   drawText(ctx, "WALL OF FAME", x0 + w / 2 - textWidth("WALL OF FAME") / 2, y0 + 4, "#ffd23f");
+  if (!entries.length) {
+    const msg = "LOG A WORKOUT TO GET ON THE WALL";
+    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 22, "#ffffff");
+  }
   entries.slice(0, 7).forEach((e, i) => {
     const fx = x0 + 8 + i * 28, fy = y0 + 13;
     const frame = e.streak >= 10 ? "#ffd23f" : e.streak >= 5 ? "#cfd8e0" : e.streak >= 2 ? "#cd7f32" : "#8a6448";
@@ -529,7 +533,8 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
     R(fx, fy, 18, 20, "#e8d9b5");
     ctx.drawImage(e.portrait, 7, 1, 18, 20, fx, fy, 18, 20);
     if (e.streak >= 10) R(fx + 17, fy - 3, 2, 2, "#ffffff");
-    drawText(ctx, String(i + 1), fx - 1, fy + 22, "#ffd23f");
-    drawText(ctx, e.name.slice(0, 3), fx + 6, fy + 22, "#f3e6c8");
+    R(fx, fy + 13, 5, 7, "#2a1c16");
+    drawText(ctx, String(i + 1), fx + 1, fy + 14, "#ffd23f");
+    drawText(ctx, e.name.slice(0, 6), fx - 2, fy + 22, "#f3e6c8");
   });
 }

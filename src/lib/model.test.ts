@@ -118,3 +118,95 @@ describe("csv parser", () => {
     expect(r.rows[2].entry).toMatchObject({ minutes: 10, km: 2 });
   });
 });
+
+describe("floor helpers", () => {
+  it("look-alike codes resolve per position (reported 2Q5Y8D -> ZQ5Y8D)", async () => {
+    const { codeVariants } = await import("./server/util");
+    const v = codeVariants("2Q5Y8D");
+    expect(v[0]).toBe("2Q5Y8D");
+    expect(v).toContain("ZQ5Y8D");
+    expect(v).toContain("ZQSYBD");
+    expect(codeVariants("47NWXN")).toEqual(["47NWXN"]);
+    expect(codeVariants("ZZZZZ")).toEqual(["ZZZZZ"]); // capped at 16 variants
+  });
+
+  it("a cardio finisher keeps a lifting day at its station", () => {
+    const h = fresh();
+    applyEntry(h, { kind: "lift", exercise: "Squat", sets: 5, reps: 5, kg: 100 }, "2026-01-01", "2026-01-01T08:00:00.000Z");
+    applyEntry(h, { kind: "lift", exercise: "Bicep Curl", sets: 1, reps: 10, kg: 10 }, "2026-01-01", "2026-01-01T08:10:00.000Z");
+    applyEntry(h, { kind: "cardio", minutes: 10, km: 1.5 }, "2026-01-01", "2026-01-01T08:20:00.000Z");
+    expect(h.days["2026-01-01"]).toMatchObject({ zone: "squat", focus: "Legs", cardioMin: 10 });
+    const c = fresh();
+    applyEntry(c, { kind: "cardio", minutes: 30, km: 5 }, "2026-01-01", "2026-01-01T08:00:00.000Z");
+    expect(c.days["2026-01-01"].zone).toBe("cardio");
+  });
+});
+
+describe("world layout", () => {
+  it("every station spot is walkable, reachable from the door, and clear of zone signs", async () => {
+    const { SPOTS, SPAWN, SIGNS, findPath, tileOf, walkable } = await import("./world");
+    const { textWidth } = await import("./font");
+    for (const [zone, spots] of Object.entries(SPOTS)) {
+      for (const s of spots) {
+        const t = tileOf(s);
+        expect(walkable[t.y][t.x], `${zone} spot ${t.x},${t.y} walkable`).toBe(true);
+        const path = findPath(SPAWN, s);
+        const last = tileOf(path.length > 1 ? path[path.length - 2] : SPAWN);
+        expect(Math.abs(last.x - t.x) + Math.abs(last.y - t.y), `${zone} spot ${t.x},${t.y} reachable`).toBeLessThanOrEqual(1);
+        // sprite box (feet at s) must not cover a sign board
+        for (const [text, cx, y] of SIGNS) {
+          const w = textWidth(text) + 8;
+          const hit = s.x + 10 > cx - w / 2 && s.x - 10 < cx + w / 2 && s.y > y && s.y - 44 < y + 10;
+          expect(hit, `${zone} spot ${t.x},${t.y} covers sign ${text}`).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+describe("exercise search while typing", () => {
+  it("resolves prefixes to the most common lift, only when asked (form typing)", () => {
+    const p = { prefix: true };
+    expect(findExercise("bench", p)?.name).toBe("Bench Press");
+    expect(findExercise("squ", p)?.name).toBe("Squat");
+    expect(findExercise("lat p", p)?.name).toBe("Lat Pulldown");
+    expect(findExercise("row", p)?.name).toBe("Barbell Row"); // never Rowing (cardio) or Upright Row
+    expect(findExercise("rows", p)?.name).toBe("Barbell Row");
+    expect(findExercise("press", p)?.name).toBe("Bench Press"); // the typed text wins over its singular
+    expect(findExercise("hams", p)?.name).toBe("Leg Curl");
+    expect(findExercise("lats", p)?.name).toBe("Lat Pulldown");
+    expect(findExercise("front s", p)?.name).toBe("Front Squat");
+    expect(findExercise("be", p)).toBeUndefined(); // too short to guess
+    expect(findExercise("Mystery Machine 3000", p)).toBeUndefined();
+    // server validation and CSV import stay strict
+    expect(findExercise("bench")).toBeUndefined();
+    expect(findExercise("Lat")).toBeUndefined();
+  });
+});
+
+describe("csv import dedupe keys", () => {
+  const hevy = (unit: "kg" | "lbs", rows: [string, string, number, number][]) =>
+    [`"title","start_time","exercise_title","set_index","set_type","weight_${unit}","reps"`, ...rows.map(([t, ex, i, w]) => `"Day","${t}","${ex}","${i}","normal","${w}","5"`)].join("\n");
+
+  it("same sets keep the same keys across kg and lbs exports", () => {
+    const kg = parseWorkoutCsv(hevy("kg", [["3 Nov 2026, 07:30", "Bench Press (Barbell)", 0, 61.25], ["3 Nov 2026, 07:30", "Bench Press (Barbell)", 1, 61.25]]));
+    const lb = parseWorkoutCsv(hevy("lbs", [["3 Nov 2026, 07:30", "Bench Press (Barbell)", 0, 135.03], ["3 Nov 2026, 07:30", "Bench Press (Barbell)", 1, 135.03]]));
+    expect(kg.rows.map((r) => r.key)).toEqual(lb.rows.map((r) => r.key));
+    expect(new Set(kg.rows.map((r) => r.key)).size).toBe(2); // two distinct sets
+  });
+
+  it("an overlapping newer export only adds the new sets", () => {
+    const a = parseWorkoutCsv(readFileSync("fixtures/hevy-sample.csv", "utf8"));
+    const b = parseWorkoutCsv(readFileSync("fixtures/hevy-sample.csv", "utf8") + '\n"Extra","6 Nov 2026, 07:00","","","Squat (Barbell)","","","0","normal","100","5","","",""');
+    const known = new Set(a.rows.map((r) => r.key));
+    expect(b.rows.filter((r) => !known.has(r.key)).map((r) => r.entry)).toEqual([{ kind: "lift", exercise: "Squat (Barbell)", sets: 1, reps: 5, kg: 100 }]);
+  });
+
+  it("identical sets without a set index still count separately", () => {
+    const csv = "Date;Exercise Name;Weight;Reps\n2026-11-01 09:00:00;Pull Up;0;8\n2026-11-01 09:00:00;Pull Up;0;8";
+    const r = parseWorkoutCsv(csv);
+    expect(r.rows).toHaveLength(2);
+    expect(r.rows[0].key).not.toBe(r.rows[1].key);
+    expect(parseWorkoutCsv(csv).rows.map((x) => x.key)).toEqual(r.rows.map((x) => x.key)); // stable
+  });
+});

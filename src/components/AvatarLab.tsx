@@ -51,20 +51,20 @@ export default function AvatarLab() {
         </label>
         <div className="lab-row">
           {Object.keys(PRESETS).map((k) => (
-            <button key={k} onClick={() => setP({ ...PRESETS[k] })}>{k}</button>
+            <button key={k} className={JSON.stringify(p) === JSON.stringify(PRESETS[k]) ? "primary" : ""} aria-pressed={JSON.stringify(p) === JSON.stringify(PRESETS[k])} onClick={() => setP({ ...PRESETS[k] })}>{k}</button>
           ))}
         </div>
         <div className="lab-row">
           {Object.keys(POSES).map((k) => (
-            <button key={k} className={pose === k ? "primary" : ""} onClick={() => setPose(k)}>{k}</button>
+            <button key={k} className={pose === k ? "primary" : ""} aria-pressed={pose === k} onClick={() => setPose(k)}>{k}</button>
           ))}
         </div>
         <div className="lab-row">
           {(["sweat", "glow", "grey"] as const).map((k) => (
-            <button key={k} className={fx[k] ? "primary" : ""} onClick={() => setFx({ ...fx, [k]: !fx[k] })}>{k}</button>
+            <button key={k} className={fx[k] ? "primary" : ""} aria-pressed={fx[k]} onClick={() => setFx({ ...fx, [k]: !fx[k] })}>{k}</button>
           ))}
           {(["skin", "hair", "hairColor", "shirt", "shorts"] as const).map((k) => (
-            <button key={k} onClick={() => setLook({ ...look, [k]: look[k] + 1 })}>{k} ↻</button>
+            <button key={k} onClick={() => setLook({ ...look, [k]: look[k] + 1 })}>{k === "hairColor" ? "hair color" : k} ↻</button>
           ))}
         </div>
         <h3>ALL PARAMS AT 0 / 5 / 10</h3>
@@ -74,7 +74,7 @@ export default function AvatarLab() {
               <figure key={k + v} style={{ margin: 0, textAlign: "center" }}>
                 <SpriteView opts={{ params: { ...DEFAULT_START, [k]: v }, look }} scale={2} label={`${k} ${v}`} />
                 <figcaption>
-                  {k.slice(0, 4)} {v}
+                  {k} {v}
                 </figcaption>
               </figure>
             )),

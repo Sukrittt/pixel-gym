@@ -4,6 +4,7 @@ import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FloorDoc } from "../floor";
+import { codeVariants } from "./util";
 
 const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 const prefix = process.env.VERCEL_ENV === "production" ? "floors" : `floors-${process.env.VERCEL_ENV ?? "dev"}`;
@@ -63,18 +64,35 @@ export async function createFloor(doc: FloorDoc): Promise<boolean> {
   }
 }
 
+/** Return from a mutateFloor callback to abort without writing (throttled, not found...). */
+export const SKIP = Symbol("skip");
+
 /** Read-modify-write with optimistic concurrency (etag), retried on conflict. */
 export async function mutateFloor<T>(code: string, fn: (doc: FloorDoc) => T): Promise<{ doc: FloorDoc; result: T } | null> {
   for (let i = 0; i < 4; i++) {
     const r = await readRaw(code);
     if (!r) return null;
     const result = fn(r.doc);
+    if ((result as unknown) === SKIP) return { doc: r.doc, result };
     try {
       await write(r.doc, { etag: r.etag });
       return { doc: r.doc, result };
     } catch (e) {
-      if (!(e instanceof BlobPreconditionFailedError) || i === 3) throw e;
+      if (!(e instanceof BlobPreconditionFailedError) || i === 3) throw e; // busy floor: a real 500, not "missing"
     }
   }
-  return null;
+  throw new Error("unreachable");
+}
+
+/**
+ * The real floor code for a typed one: exact first, else a look-alike variant that exists.
+ * Storage errors propagate (a blip is a 500, never a wrong "not found").
+ * `exactMissed` skips re-reading the exact code when the caller already checked it.
+ */
+export async function resolveCode(code: string, exactMissed = false): Promise<string | null> {
+  if (!exactMissed && (await readFloor(code, true))) return code; // common case: one read
+  const variants = codeVariants(code).slice(1);
+  const hits = await Promise.all(variants.map((c) => readFloor(c, true)));
+  const i = hits.findIndex(Boolean);
+  return i >= 0 ? variants[i] : null;
 }

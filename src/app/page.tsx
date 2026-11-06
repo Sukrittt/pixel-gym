@@ -1,10 +1,11 @@
 import Link from "next/link";
 import DemoFloor from "@/components/DemoFloor";
 import JoinForms from "@/components/JoinForms";
-import { readSession } from "@/lib/server/session";
+import { currentMember } from "@/lib/server/session";
 
 export default async function Home() {
-  const s = await readSession();
+  const m = await currentMember().catch(() => null); // only link a floor that still exists
+  const s = m && { code: m.doc.code };
   return (
     <>
       <section className="hero">

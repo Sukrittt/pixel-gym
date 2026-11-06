@@ -114,8 +114,20 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
   const agents = useRef(new Map<string, Agent>());
   const viewRef = useRef(view);
   const seenEmotes = useRef(new Set<string>());
-  const [zoom, setZoom] = useState<number | "fit">("fit");
+  // null = auto: fit on wide screens, 2x (readable tags) + pan on phones
+  const [zoom, setZoom] = useState<number | "fit" | null>(null);
   const [fitW, setFitW] = useState(WW);
+  // fit-to-width unless that makes pixels tiny (phones): then 1x and pan
+  const fitScale = fitW / WW;
+  const auto = fitScale < 0.85 ? 2 : "fit";
+  const eff = zoom ?? auto;
+  const scale = eff === "fit" ? fitScale : eff;
+  const scaleRef = useRef(scale);
+  const followed = useRef(false);
+  useEffect(() => {
+    scaleRef.current = scale;
+    followed.current = false; // re-center on you after a zoom change
+  }, [scale]);
 
   // sync agents with the latest floor data: new zone = walk there
   useEffect(() => {
@@ -141,7 +153,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
       seenEmotes.current.add(e.id);
       const a = agents.current.get(e.to);
       const from = view.members.find((m) => m.id === e.from)?.name ?? e.from;
-      if (a) a.emote = { kind: e.kind, from, until: now + 4500 };
+      if (a) a.emote = { kind: e.kind, from, until: now + 8000 };
     }
   }, [view]);
 
@@ -249,15 +261,37 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         if (!m) continue;
         const tag = tagFor(m);
         const w = textWidth(tag) + 4;
-        const tx = Math.round(a.x - w / 2);
-        let ty = Math.round(a.y - 54);
+        const tx = Math.max(1, Math.min(WW - w - 1, Math.round(a.x - w / 2))); // never clipped by the floor edge
+        // tags of lifters by the back wall go under their feet instead of over the windows
+        const under = a.y - 54 < 50;
+        let ty = Math.round(under ? a.y + 3 : a.y - 54);
         // nudge tags up until they stop overlapping ones already placed
-        while (placed.some(([px, py, pw]) => tx < px + pw && px < tx + w && Math.abs(py - ty) < 10)) ty -= 10;
+        while (placed.some(([px, py, pw]) => tx < px + pw && px < tx + w && Math.abs(py - ty) < 10)) ty += under ? 10 : -10;
         placed.push([tx, ty, w]);
         ctx.fillStyle = a.id === meId ? "rgba(120,80,0,0.85)" : m.today ? "rgba(25,18,12,0.72)" : "rgba(60,60,60,0.6)";
         ctx.fillRect(tx, ty, w, 9);
         drawText(ctx, tag, tx + 2, ty + 2, a.id === meId ? "#ffe9a8" : m.today ? "#fff8e8" : "#cfcfcf");
+        if (a.id === meId && !under) {
+          // bobbing "YOU" marker so you can find yourself instantly
+          const by = ty - 9 - (Math.floor(t / 300) % 2);
+          ctx.fillStyle = "#2a1c16";
+          ctx.fillRect(Math.round(a.x) - 9, by - 1, 19, 8);
+          ctx.fillStyle = "#ffd23f";
+          ctx.fillRect(Math.round(a.x) - 8, by, 17, 6);
+          drawText(ctx, "YOU", Math.round(a.x) - 6, by + 1, "#2a1c16");
+          ctx.fillRect(Math.round(a.x) - 1, by + 6, 3, 2);
+        }
         if (a.emote && t < a.emote.until) drawEmote(ctx, a.emote.kind, a.emote.from, a.x, ty);
+      }
+      const wrap = wrapRef.current;
+      if (wrap && !wrap.dataset.ready) wrap.dataset.ready = "1"; // hides the "Opening…" placeholder
+      const mine = meId ? agents.current.get(meId) : undefined;
+      if (wrap && mine && !followed.current && wrap.scrollWidth > wrap.clientWidth + 2) {
+        followed.current = true;
+        const sc = scaleRef.current;
+        // center on where you're headed, not the door you spawn at
+        wrap.scrollLeft = mine.spot.x * sc - wrap.clientWidth / 2;
+        wrap.scrollTop = (mine.spot.y - 30) * sc - wrap.clientHeight / 2;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -265,36 +299,42 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
     return () => cancelAnimationFrame(raf);
   }, [meId]);
 
-  const scale = zoom === "fit" ? Math.max(0.5, fitW / WW) : zoom;
 
-  const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!onSelect) return;
+  const hitTest = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const wx = ((e.clientX - rect.left) * WW) / rect.width;
     const wy = ((e.clientY - rect.top) * WH) / rect.height;
     const hit = [...agents.current.values()]
       .sort((a, b) => b.y - a.y)
-      .find((a) => Math.abs(wx - a.x) < 11 && wy > a.y - 46 && wy < a.y + 2);
-    const m = hit && viewRef.current.members.find((x) => x.id === hit.id);
+      .find((a) => Math.abs(wx - a.x) < 12 && wy > a.y - 56 && wy < a.y + 3);
+    return hit && viewRef.current.members.find((x) => x.id === hit.id);
+  };
+  const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const m = onSelect && hitTest(e);
     if (m) onSelect(m);
+  };
+  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.currentTarget.style.cursor = onSelect && hitTest(e) ? "pointer" : "default";
   };
 
   return (
     <div className="floor">
       <div className="zoom">
         {(["fit", 1, 2, 3] as const).map((z) => (
-          <button key={z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
+          <button key={z} className={eff === z ? "on" : ""} onClick={() => setZoom(z)} aria-pressed={eff === z}>
             {z === "fit" ? "FIT" : `${z}X`}
           </button>
         ))}
       </div>
       <div className="floor-wrap" ref={wrapRef}>
+        <p className="floor-loading" aria-hidden>Opening the gym floor…</p>
         <canvas
           ref={canvasRef}
           width={WW}
           height={WH}
           onClick={onClick}
-          style={{ width: WW * scale, height: WH * scale, cursor: onSelect ? "pointer" : "default" }}
+          onMouseMove={onMove}
+          style={{ width: WW * scale, height: WH * scale }}
           aria-label={`Pixel gym floor: ${view.name}`}
         />
       </div>

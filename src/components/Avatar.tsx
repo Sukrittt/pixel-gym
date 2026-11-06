@@ -35,7 +35,7 @@ export function ParamBars({ p, compare }: { p: Params; compare?: Params }) {
   );
 }
 
-export function Timelapse({ series, look }: { series: Snapshot[]; look: MemberView["look"] }) {
+export function Timelapse({ series, look, who }: { series: Snapshot[]; look: MemberView["look"]; who?: string }) {
   const [i, setI] = useState(series.length - 1);
   const [playing, setPlaying] = useState(false);
   const idx = Math.min(i, series.length - 1);
@@ -66,17 +66,21 @@ export function Timelapse({ series, look }: { series: Snapshot[]; look: MemberVi
           <ParamBars p={s.p} compare={series[0].p} />
         </div>
       </div>
-      <div className="tl-controls">
-        <button
-          onClick={() => {
-            if (idx >= series.length - 1) setI(0);
-            setPlaying((v) => !v);
-          }}
-        >
-          {playing ? "PAUSE" : "PLAY"}
-        </button>
-        <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" />
-      </div>
+      {series.length > 1 ? (
+        <div className="tl-controls">
+          <button
+            onClick={() => {
+              if (idx >= series.length - 1) setI(0);
+              setPlaying((v) => !v);
+            }}
+          >
+            {playing ? "PAUSE" : "PLAY"}
+          </button>
+          <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" aria-valuetext={`Day ${idx + 1}, ${s.date}`} />
+        </div>
+      ) : (
+        <p className="muted">{who ? `${who} is on day one. Their timelapse grows from tomorrow.` : "Day one. Come back tomorrow and this becomes a timelapse."}</p>
+      )}
     </div>
   );
 }
@@ -86,40 +90,73 @@ export function InspectCard({
 }: {
   m: MemberView;
   onClose: () => void;
-  onEmote?: (k: EmoteKind) => void;
+  onEmote?: (k: EmoteKind) => Promise<number> | void;
   loadSeries: () => Promise<Snapshot[]>;
   isMe?: boolean;
   floorName: string;
 }) {
   const [series, setSeries] = useState<Snapshot[] | null>(null);
-  const [sent, setSent] = useState<EmoteKind | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;
-    loadSeries().then((s) => live && setSeries(s));
+    loadSeries()
+      .then((s) => live && setSeries(s))
+      .catch(() => live && setSeries([]));
     return () => {
       live = false;
     };
   }, [loadSeries]);
+  // proper dialog: focus inside, Escape closes, focus returns to the trigger
+  useEffect(() => {
+    const back = document.activeElement as HTMLElement | null;
+    cardRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onClose();
+      if (e.key !== "Tab" || !cardRef.current) return;
+      // keep Tab inside the dialog
+      const f = [...cardRef.current.querySelectorAll<HTMLElement>("button, input, a[href]")].filter((x) => !x.hasAttribute("disabled"));
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === cardRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      back?.focus?.();
+    };
+  }, [onClose]);
+  const emote = async (k: EmoteKind) => {
+    setSent("sending…");
+    const status = await onEmote?.(k);
+    const what = k === "bump" ? "Fist bump" : k === "flex" ? "Flex" : "Clap";
+    setSent(status === undefined || status === 200 ? `${what} sent to ${m.name}!` : status === 429 ? "Slow down a sec." : "Couldn't send. Check your connection.");
+  };
+  const columns: [string, { p: Params; sat: number }][] = [
+    ["START", m.snaps.day1],
+    ...(m.days > 30 ? ([["30 DAYS AGO", m.snaps.ago30]] as [string, { p: Params; sat: number }][]) : []),
+    [m.today && m.today.sets > 0 ? "TODAY (PUMPED)" : "TODAY", { p: m.params, sat: m.sat }],
+  ];
   return (
-    <div className="modal" onClick={onClose} role="dialog" aria-label={`${m.name} inspection card`}>
-      <div className="card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal" onClick={onClose}>
+      <div className="card" ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${m.name} inspection card`} onClick={(e) => e.stopPropagation()}>
         <div className="card-head">
           <h2>{m.name}</h2>
           <span className="muted">
-            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {m.today ? m.today.focus : "not in today"}
+            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {m.today ? m.today.focus : "off today"}
           </span>
           <button className="x" onClick={onClose} aria-label="close">
             ×
           </button>
         </div>
         <div className="compare">
-          {(
-            [
-              ["DAY 1", m.snaps.day1],
-              ["30 DAYS AGO", m.snaps.ago30],
-              ["TODAY", { p: m.params, sat: m.sat }],
-            ] as const
-          ).map(([label, s]) => (
+          {columns.map(([label, s]) => (
             <figure key={label}>
               <SpriteView opts={{ params: s.p, look: m.look, sat: s.sat }} scale={4} label={`${m.name} ${label}`} />
               <figcaption>{label}</figcaption>
@@ -130,15 +167,25 @@ export function InspectCard({
         <div className="actions">
           {onEmote && !isMe &&
             (["bump", "flex", "clap"] as const).map((k) => (
-              <button key={k} onClick={() => (onEmote(k), setSent(k))} disabled={!!sent}>
+              <button key={k} onClick={() => sent !== "sending…" && emote(k)} aria-busy={sent === "sending…"}>
                 {k === "bump" ? "👊 FIST BUMP" : k === "flex" ? "💪 FLEX" : "👏 CLAP"}
               </button>
             ))}
-          {sent && <span className="muted">sent!</span>}
           <button onClick={() => downloadCard(m, floorName)}>⬇ SHARE CARD</button>
         </div>
+        <p className="muted" role="status" style={{ minHeight: "1.4em", margin: "6px 0 0" }}>
+          {sent}
+        </p>
         <h3>TIMELAPSE</h3>
-        {series ? <Timelapse series={series} look={m.look} /> : <p className="muted">loading…</p>}
+        {!series ? (
+          <p className="muted">loading…</p>
+        ) : !series.length ? (
+          <p className="muted">Couldn&apos;t load the timelapse. Close the card and try again in a moment.</p>
+        ) : m.weekly === 0 && m.days <= 1 && !m.today ? (
+          <p className="muted">{isMe ? "You haven't" : `${m.name} hasn't`} logged a workout yet.</p>
+        ) : (
+          <Timelapse series={series} look={m.look} who={isMe ? undefined : m.name} />
+        )}
       </div>
     </div>
   );
@@ -166,17 +213,17 @@ export function drawShareCard(m: MemberView, floorName: string): HTMLCanvasEleme
   drawText(ctx, `STREAK ${m.streak}D · WEEK ${(m.weekly / 1000).toFixed(1)}K KG`, 120, 50, "#6b4a35");
   PARAMS.forEach((k, i) => {
     const y = 64 + i * 10;
-    drawText(ctx, k.slice(0, 5), 120, y, "#2a1c16");
-    R(148, y, 120, 5, "#00000030");
-    R(148, y, Math.round(m.params[k] * 12), 5, k === "bodyfat" ? "#e0a32a" : "#3fa36b");
-    drawText(ctx, m.params[k].toFixed(1), 274, y, "#2a1c16");
+    drawText(ctx, k, 120, y, "#2a1c16");
+    R(162, y, 110, 5, "#00000030");
+    R(162, y, Math.round(m.params[k] * 11), 5, k === "bodyfat" ? "#e0a32a" : "#3fa36b");
+    drawText(ctx, m.params[k].toFixed(1), 278, y, "#2a1c16");
   });
   return c;
 }
 
 export function downloadCard(m: MemberView, floorName: string) {
   const a = document.createElement("a");
-  a.download = `pixel-gym-${m.name.toLowerCase()}.png`;
+  a.download = `pixel-gym-${m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
   a.href = drawShareCard(m, floorName).toDataURL("image/png");
   a.click();
 }

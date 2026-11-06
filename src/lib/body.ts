@@ -169,7 +169,8 @@ export function applyEntry(h: History, e: Entry, date: string, at: string): { pr
   if (e.kind === "cardio") {
     day.cardioMin += e.minutes;
     day.km += e.km;
-    if (latest) Object.assign(day, { zone: "cardio", focus: "Cardio" });
+    // a cardio finisher doesn't move a lifting day off its station
+    if (latest && day.sets === 0) Object.assign(day, { zone: "cardio", focus: "Cardio" });
     return { pr: false };
   }
   const ex = findExercise(e.exercise);
@@ -180,14 +181,13 @@ export function applyEntry(h: History, e: Entry, date: string, at: string): { pr
   }
   const load = e.kg > 0 ? e.kg : (ex.bw ?? 0.5) * latestBw(h, date);
   const work = e.sets * e.reps * load;
-  const entryVol: Partial<Record<Group, number>> = {};
   for (const [g, w] of Object.entries(ex.m) as [Group, number][]) {
-    entryVol[g] = work * w;
     day.vol[g] = (day.vol[g] ?? 0) + work * w;
   }
   day.total += work;
   day.sets += e.sets;
-  if (latest) Object.assign(day, classify(entryVol, 0));
+  // the day's dominant work decides station + label (a push day ending in pushdowns is still Push)
+  if (latest) Object.assign(day, classify(day.vol, 0));
   let pr = false;
   if (e.kg > 0 && e.kg > (h.bests[ex.name] ?? 0)) {
     pr = (h.bests[ex.name] ?? 0) > 0; // first time doing a lift isn't a PR
