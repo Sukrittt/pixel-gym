@@ -108,7 +108,7 @@ export default function LiveFloor({
   const onEmote = async (to: string, kind: EmoteKind) => {
     const r = await fetch("/api/emote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, kind }) }).catch(() => null);
     if (r?.ok) setView((v) => localEmote(v, meId, to, kind));
-    return !!r?.ok;
+    return r?.status ?? 0;
   };
   const copyInvite = async () => {
     const url = `${location.origin}/floor/${code}`;

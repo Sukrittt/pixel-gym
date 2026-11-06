@@ -33,7 +33,7 @@ const muscles = (name: string) => {
     .join(" · ");
 };
 
-export default function LogForm({ code }: { code: string }) {
+export default function LogForm({ code, loggedToday }: { code: string; loggedToday: string | null }) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [draft, setDraft] = useState({ exercise: "", sets: "3", reps: "8", kg: "" });
@@ -42,6 +42,16 @@ export default function LogForm({ code }: { code: string }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState("");
+  // stable per form visit: a retried save after a lost response is ignored server-side
+  const [logId] = useState(() => Math.random().toString(36).slice(2) + Date.now().toString(36));
+  // any edit clears a stale validation message
+  const touch = <T,>(set: (v: T) => void) => (v: T) => {
+    setMsg("");
+    set(v);
+  };
+  const setRowsT = touch(setRows);
+  const setCardioT = touch(setCardio);
+  const setBwT = touch(setBw);
 
   /** The draft row as an entry, or null if empty / unknown. */
   const draftEntry = (): Lift | null | "unknown" => {
@@ -68,7 +78,7 @@ export default function LogForm({ code }: { code: string }) {
     setDraft((x) => ({ ...x, exercise: "" }));
   };
 
-  const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+  const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRowsT(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   const save = async (rest = false) => {
     let list: Entry[] = [];
@@ -77,14 +87,17 @@ export default function LogForm({ code }: { code: string }) {
       const d = draftEntry();
       if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions or clear it.`);
       list = [...rows.map(toLift), ...(d ? [d] : [])];
-      if (+cardio.minutes > 0) list.push({ kind: "cardio", exercise: cardio.exercise, minutes: +cardio.minutes, km: +cardio.km || 0 });
-      if (+bw > 0) list.push({ kind: "weight", bw: +bw });
+      if (+cardio.minutes > 0) list.push({ kind: "cardio", exercise: cardio.exercise, minutes: clampNum(cardio.minutes, 600, 1), km: clampNum(cardio.km, 300) });
+      if (bw.trim()) {
+        if (+bw < 25 || +bw > 350) return setMsg("Bodyweight should be between 25 and 350 kg.");
+        list.push({ kind: "weight", bw: +bw });
+      }
     }
     if (!list.length) return setMsg("Add a lift, some cardio or your bodyweight first. Or tap a template above.");
     setBusy(true);
     setMsg("");
     try {
-      const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate() }) });
+      const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Could not save.");
       const gain = Object.entries(j.gains ?? {})
@@ -114,10 +127,15 @@ export default function LogForm({ code }: { code: string }) {
   return (
     <div className="grid2">
       <div className="panel">
+        {loggedToday && (
+          <p className="banner callout" style={{ color: "#fff4d6" }}>
+            Already logged today: {loggedToday}. Anything you save now is added to today.
+          </p>
+        )}
         <h3>START FROM A TEMPLATE</h3>
         <div className="lab-row" style={{ marginTop: 0 }}>
           {Object.keys(TEMPLATES).map((k) => (
-            <button key={k} type="button" onClick={() => setRows((v) => [...v, ...TEMPLATES[k].map(toRow)])}>
+            <button key={k} type="button" onClick={() => setRowsT([...rows, ...TEMPLATES[k].map(toRow)])}>
               {k}
             </button>
           ))}
@@ -129,7 +147,7 @@ export default function LogForm({ code }: { code: string }) {
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={draft.exercise} onChange={(e) => setDraft({ ...draft, exercise: e.target.value })} placeholder="Start typing: bench, squat, curl…" />
+              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
             </label>
             <label>
               SETS
@@ -167,7 +185,7 @@ export default function LogForm({ code }: { code: string }) {
           <>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ flex: "0 0 auto" }}>TODAY&apos;S LIST ({rows.length})</h3>
-            <button type="button" className="link" style={{ flex: "0 0 auto" }} onClick={() => setRows([])}>clear all</button>
+            <button type="button" className="link" style={{ flex: "0 0 auto" }} onClick={() => setRowsT([])}>clear all</button>
           </div>
           <table className="sets">
             <thead>
@@ -192,7 +210,7 @@ export default function LogForm({ code }: { code: string }) {
                     </td>
                   ))}
                   <td>
-                    <button type="button" onClick={() => setRows((v) => v.filter((_, j) => j !== i))} aria-label={`remove ${r.exercise}`}>
+                    <button type="button" onClick={() => setRowsT(rows.filter((_, j) => j !== i))} aria-label={`remove ${r.exercise}`}>
                       ×
                     </button>
                   </td>
@@ -207,7 +225,7 @@ export default function LogForm({ code }: { code: string }) {
         <div className="row">
           <label>
             TYPE
-            <select value={cardio.exercise} onChange={(e) => setCardio({ ...cardio, exercise: e.target.value })}>
+            <select value={cardio.exercise} onChange={(e) => setCardioT({ ...cardio, exercise: e.target.value })}>
               {CARDIO.map((e) => (
                 <option key={e.name}>{e.name}</option>
               ))}
@@ -215,15 +233,15 @@ export default function LogForm({ code }: { code: string }) {
           </label>
           <label>
             MINUTES
-            <input type="number" inputMode="numeric" min={0} value={cardio.minutes} onChange={(e) => setCardio({ ...cardio, minutes: e.target.value })} />
+            <input type="number" inputMode="numeric" min={0} value={cardio.minutes} onChange={(e) => setCardioT({ ...cardio, minutes: e.target.value })} />
           </label>
           <label>
             KM
-            <input type="number" inputMode="decimal" min={0} step={0.1} value={cardio.km} onChange={(e) => setCardio({ ...cardio, km: e.target.value })} />
+            <input type="number" inputMode="decimal" min={0} step={0.1} value={cardio.km} onChange={(e) => setCardioT({ ...cardio, km: e.target.value })} />
           </label>
           <label>
             BODYWEIGHT KG
-            <input type="number" inputMode="decimal" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBw(e.target.value)} />
+            <input type="number" inputMode="decimal" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBwT(e.target.value)} />
           </label>
         </div>
         <div className="actions">

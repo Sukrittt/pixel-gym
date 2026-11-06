@@ -3,6 +3,7 @@ import { DEFAULT_START, type Entry } from "../body";
 import { findExercise } from "../exercises";
 import type { Member } from "../floor";
 import { sanitize } from "../font";
+import { LOOK_MAX } from "../sprite";
 
 export const newId = (n = 8) => randomBytes(n).toString("hex");
 export function newCode() {
@@ -57,7 +58,8 @@ export function cleanEntry(e: unknown): Entry | null {
   return null;
 }
 
-const SWAP: Record<string, string> = { "2": "Z", Z: "2", "5": "S", S: "5", "0": "O", O: "0", "1": "I", I: "1", "8": "B", B: "8" };
+// only pairs that ever appeared in an issued alphabet (old: ...Z S B 2 5 8; new has none)
+const SWAP: Record<string, string> = { "2": "Z", Z: "2", "5": "S", S: "5", "8": "B", B: "8" };
 /**
  * Codes to try for a typed invite code: as typed first, then every combination
  * of look-alike swaps per position (old codes mix e.g. Z and 5: "2Q5Y8D" -> "ZQ5Y8D").
@@ -72,7 +74,6 @@ export function codeVariants(code: string): string[] {
   return out; // first entry is always the code as typed
 }
 
-const LOOK_MAX = { skin: 5, hair: 5, hairColor: 6, shirt: 7, shorts: 5 } as const;
 /** Validate a client-chosen look. */
 export function cleanLook(v: unknown): Member["look"] | null {
   if (!v || typeof v !== "object") return null;
@@ -80,7 +81,7 @@ export function cleanLook(v: unknown): Member["look"] | null {
   const out = {} as Member["look"];
   for (const [k, max] of Object.entries(LOOK_MAX) as [keyof typeof LOOK_MAX, number][]) {
     const n = Number(o[k]);
-    if (!Number.isInteger(n) || n < 0 || n >= max) return null;
+    if (typeof o[k] !== "number" || !Number.isInteger(n) || n < 0 || n >= max) return null;
     out[k] = n;
   }
   return out;

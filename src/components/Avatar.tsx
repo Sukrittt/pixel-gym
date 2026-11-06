@@ -90,7 +90,7 @@ export function InspectCard({
 }: {
   m: MemberView;
   onClose: () => void;
-  onEmote?: (k: EmoteKind) => Promise<boolean> | void;
+  onEmote?: (k: EmoteKind) => Promise<number> | void;
   loadSeries: () => Promise<Snapshot[]>;
   isMe?: boolean;
   floorName: string;
@@ -109,7 +109,21 @@ export function InspectCard({
   useEffect(() => {
     const back = document.activeElement as HTMLElement | null;
     cardRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onClose();
+      if (e.key !== "Tab" || !cardRef.current) return;
+      // keep Tab inside the dialog
+      const f = [...cardRef.current.querySelectorAll<HTMLElement>("button, input, a[href]")].filter((x) => !x.hasAttribute("disabled"));
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === cardRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
@@ -118,13 +132,13 @@ export function InspectCard({
   }, [onClose]);
   const emote = async (k: EmoteKind) => {
     setSent("sending…");
-    const ok = await onEmote?.(k);
-    setSent(ok === false ? "slow down a sec" : "sent!");
+    const status = await onEmote?.(k);
+    setSent(status === undefined || status === 200 ? "sent!" : status === 429 ? "slow down a sec" : "couldn't send, check your connection");
   };
   const columns: [string, { p: Params; sat: number }][] = [
     ["START", m.snaps.day1],
     ...(m.days > 30 ? ([["30 DAYS AGO", m.snaps.ago30]] as [string, { p: Params; sat: number }][]) : []),
-    ["TODAY", { p: m.params, sat: m.sat }],
+    [m.today && m.today.sets > 0 ? "TODAY (PUMPED)" : "TODAY", { p: m.params, sat: m.sat }],
   ];
   return (
     <div className="modal" onClick={onClose}>

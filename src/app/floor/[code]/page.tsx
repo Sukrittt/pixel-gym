@@ -1,10 +1,10 @@
-import Link from "next/link";
 import JoinForms from "@/components/JoinForms";
 import LiveFloor from "@/components/LiveFloor";
 import { PARAMS, type Param } from "@/lib/body";
 import { floorViewNow } from "@/lib/floor";
 import { currentMember, readSession, requestToday } from "@/lib/server/session";
-import { readFloor } from "@/lib/server/store";
+import { readFloor, resolveCode } from "@/lib/server/store";
+import { notFound, redirect } from "next/navigation";
 
 /** "chest:0.62|legs:0.1" from /log -> validated gains for the banner. */
 function parseGain(raw: string | string[] | undefined): Partial<Record<Param, number>> {
@@ -27,14 +27,12 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
   if (!s || s.doc.code !== c) {
     const sess = await readSession();
     const floor = await readFloor(c, true);
-    if (!floor)
-      return (
-        <div className="panel" style={{ maxWidth: 560 }}>
-          <h2>No floor with code {c}</h2>
-          <p>Check the invite link with whoever sent it, or start your own floor.</p>
-          <Link className="btn primary" href="/">CREATE A FLOOR</Link>
-        </div>
-      );
+    if (!floor) {
+      // hand-typed look-alike (2Q5Y8D for ZQ5Y8D): send them to the real floor
+      const real = await resolveCode(c);
+      if (real && real !== c) redirect(`/floor/${real}`);
+      notFound();
+    }
     const names = floor.members.map((m) => m.name);
     return (
       <div style={{ maxWidth: 600 }}>
@@ -44,7 +42,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
           floor. Your avatar starts on the bench outside until you log a workout.
         </p>
         {sess?.code === c && <p className="banner warn">We couldn&apos;t find your spot on this floor any more. Joining again creates a new avatar.</p>}
-        {sess && sess.code !== c && <p className="muted">You&apos;re on floor {sess.code} now. Joining here moves you to this floor.</p>}
+        {sess && sess.code !== c && <p className="muted">You&apos;re signed in on another floor. Joining here moves you to this one.</p>}
         <JoinForms code={c} />
       </div>
     );

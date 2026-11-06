@@ -11,7 +11,7 @@ export default function FloorScreen({
 }: {
   view: FloorView;
   meId?: string;
-  onEmote?: (to: string, k: EmoteKind) => Promise<boolean> | void;
+  onEmote?: (to: string, k: EmoteKind) => Promise<number> | void;
   loadSeries: (id: string) => Promise<Snapshot[]>;
 }) {
   const [sel, setSel] = useState<MemberView | null>(null);

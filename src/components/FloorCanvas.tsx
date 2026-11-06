@@ -114,11 +114,14 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
   const agents = useRef(new Map<string, Agent>());
   const viewRef = useRef(view);
   const seenEmotes = useRef(new Set<string>());
-  const [zoom, setZoom] = useState<number | "fit">("fit");
+  // null = auto: fit on wide screens, 2x (readable tags) + pan on phones
+  const [zoom, setZoom] = useState<number | "fit" | null>(null);
   const [fitW, setFitW] = useState(WW);
   // fit-to-width unless that makes pixels tiny (phones): then 1x and pan
   const fitScale = fitW / WW;
-  const scale = zoom === "fit" ? (fitScale < 0.85 ? 1 : fitScale) : zoom;
+  const auto = fitScale < 0.85 ? 2 : "fit";
+  const eff = zoom ?? auto;
+  const scale = eff === "fit" ? fitScale : eff;
   const scaleRef = useRef(scale);
   const followed = useRef(false);
   useEffect(() => {
@@ -259,14 +262,16 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         const tag = tagFor(m);
         const w = textWidth(tag) + 4;
         const tx = Math.round(a.x - w / 2);
-        let ty = Math.round(a.y - 54);
+        // tags of lifters by the back wall go under their feet instead of over the windows
+        const under = a.y - 54 < 50;
+        let ty = Math.round(under ? a.y + 3 : a.y - 54);
         // nudge tags up until they stop overlapping ones already placed
-        while (placed.some(([px, py, pw]) => tx < px + pw && px < tx + w && Math.abs(py - ty) < 10)) ty -= 10;
+        while (placed.some(([px, py, pw]) => tx < px + pw && px < tx + w && Math.abs(py - ty) < 10)) ty += under ? 10 : -10;
         placed.push([tx, ty, w]);
         ctx.fillStyle = a.id === meId ? "rgba(120,80,0,0.85)" : m.today ? "rgba(25,18,12,0.72)" : "rgba(60,60,60,0.6)";
         ctx.fillRect(tx, ty, w, 9);
         drawText(ctx, tag, tx + 2, ty + 2, a.id === meId ? "#ffe9a8" : m.today ? "#fff8e8" : "#cfcfcf");
-        if (a.id === meId) {
+        if (a.id === meId && !under) {
           // bobbing "YOU" marker so you can find yourself instantly
           const by = ty - 9 - (Math.floor(t / 300) % 2);
           ctx.fillStyle = "#2a1c16";
@@ -315,7 +320,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
     <div className="floor">
       <div className="zoom">
         {(["fit", 1, 2, 3] as const).map((z) => (
-          <button key={z} className={(zoom === "fit" && fitScale < 0.85 ? z === 1 : zoom === z) ? "on" : ""} onClick={() => setZoom(z)} aria-pressed={zoom === z}>
+          <button key={z} className={eff === z ? "on" : ""} onClick={() => setZoom(z)} aria-pressed={eff === z}>
             {z === "fit" ? "FIT" : `${z}X`}
           </button>
         ))}

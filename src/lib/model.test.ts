@@ -141,3 +141,25 @@ describe("floor helpers", () => {
     expect(c.days["2026-01-01"].zone).toBe("cardio");
   });
 });
+
+describe("world layout", () => {
+  it("every station spot is walkable, reachable from the door, and clear of zone signs", async () => {
+    const { SPOTS, SPAWN, SIGNS, findPath, tileOf, walkable } = await import("./world");
+    const { textWidth } = await import("./font");
+    for (const [zone, spots] of Object.entries(SPOTS)) {
+      for (const s of spots) {
+        const t = tileOf(s);
+        expect(walkable[t.y][t.x], `${zone} spot ${t.x},${t.y} walkable`).toBe(true);
+        const path = findPath(SPAWN, s);
+        const last = tileOf(path.length > 1 ? path[path.length - 2] : SPAWN);
+        expect(Math.abs(last.x - t.x) + Math.abs(last.y - t.y), `${zone} spot ${t.x},${t.y} reachable`).toBeLessThanOrEqual(1);
+        // sprite box (feet at s) must not cover a sign board
+        for (const [text, cx, y] of SIGNS) {
+          const w = textWidth(text) + 8;
+          const hit = s.x + 10 > cx - w / 2 && s.x - 10 < cx + w / 2 && s.y > y && s.y - 44 < y + 10;
+          expect(hit, `${zone} spot ${t.x},${t.y} covers sign ${text}`).toBe(false);
+        }
+      }
+    }
+  });
+});

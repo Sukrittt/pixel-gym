@@ -56,15 +56,15 @@ export default function AvatarLab() {
         </div>
         <div className="lab-row">
           {Object.keys(POSES).map((k) => (
-            <button key={k} className={pose === k ? "primary" : ""} onClick={() => setPose(k)}>{k}</button>
+            <button key={k} className={pose === k ? "primary" : ""} aria-pressed={pose === k} onClick={() => setPose(k)}>{k}</button>
           ))}
         </div>
         <div className="lab-row">
           {(["sweat", "glow", "grey"] as const).map((k) => (
-            <button key={k} className={fx[k] ? "primary" : ""} onClick={() => setFx({ ...fx, [k]: !fx[k] })}>{k}</button>
+            <button key={k} className={fx[k] ? "primary" : ""} aria-pressed={fx[k]} onClick={() => setFx({ ...fx, [k]: !fx[k] })}>{k}</button>
           ))}
           {(["skin", "hair", "hairColor", "shirt", "shorts"] as const).map((k) => (
-            <button key={k} onClick={() => setLook({ ...look, [k]: look[k] + 1 })}>{k} ↻</button>
+            <button key={k} onClick={() => setLook({ ...look, [k]: look[k] + 1 })}>{k === "hairColor" ? "hair color" : k} ↻</button>
           ))}
         </div>
         <h3>ALL PARAMS AT 0 / 5 / 10</h3>

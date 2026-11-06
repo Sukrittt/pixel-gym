@@ -84,12 +84,12 @@ export type Pt = { x: number; y: number };
 const at = (tx: number, ty: number, dx = 8, dy = 12): Pt => ({ x: tx * TILE + dx, y: ty * TILE + dy });
 
 export const SPOTS: Record<Zone, Pt[]> = {
-  weights: [at(3, 5), at(7, 5), at(3, 8), at(7, 8), at(11, 7), at(5, 10), at(9, 10), at(11, 10)],
+  weights: [at(4, 6), at(8, 6), at(4, 9), at(8, 9), at(11, 6), at(6, 8), at(10, 10), at(2, 8)],
   squat: [15, 18, 21, 24].map((x) => at(x, 7)),
-  cardio: [at(28, 5, 16), at(31, 5, 16), at(34, 5, 16), at(30, 9), at(34, 9), at(36, 9)],
-  mat: [at(15, 14, 16), at(18, 14, 16), at(21, 14, 16), at(15, 18, 16), at(18, 18, 16), at(23, 17), at(22, 19)],
+  cardio: [at(28, 5, 16), at(31, 5, 16), at(34, 5, 16), at(30, 9), at(36, 9), at(37, 9)],
+  mat: [at(15, 15, 16), at(18, 15, 16), at(21, 15, 16), at(15, 18, 16), at(18, 18, 16), at(23, 17), at(22, 19)],
   bar: [at(28, 16), at(31, 15), at(33, 15), at(35, 15), at(32, 18), at(36, 18)],
-  lockers: [at(5, 14), at(3, 14), at(6, 17), at(3, 17), at(9, 16), at(10, 13)],
+  lockers: [at(3, 17), at(6, 17), at(8, 16), at(10, 17), at(11, 16), at(3, 19)],
   outside: [8, 9, 10, 15, 16, 17, 22, 23, 24, 30, 31, 32].map((x) => at(x, 22, 8, 10)),
 };
 export const SPAWN: Pt = at(4, 19);

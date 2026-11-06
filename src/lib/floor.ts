@@ -1,7 +1,7 @@
 import { simulate, streak, weeklyVolume, withPump, addDays, type DayAgg, type History, type Params, type Snapshot } from "./body";
 import type { Look } from "./sprite";
 
-export type Member = History & { id: string; name: string; look: Look; key?: string };
+export type Member = History & { id: string; name: string; look: Look; key?: string; recentLogs?: string[] };
 export type EmoteKind = "bump" | "flex" | "clap";
 export type Emote = { id: string; from: string; to: string; kind: EmoteKind; at: string };
 export type FloorDoc = { code: string; name: string; created: string; members: Member[]; emotes: Emote[] };
@@ -89,3 +89,14 @@ export function tagFor(v: MemberView): string {
 
 /** Floor view as of right now (server-side first paint). */
 export const floorViewNow = (doc: FloorDoc, today: string) => buildFloorView(doc, today, Date.now());
+
+export type MeDay = { date: string; focus: string; total: number; sets: number; cardioMin: number; km: number; bw?: number; pr: boolean };
+export type MeData = { code: string; floorName: string; me: MemberView; series: Snapshot[]; days: MeDay[] };
+
+/** Everything /me shows, for both the server render and /api/me. */
+export function meData(doc: FloorDoc, m: Member, today: string): MeData {
+  const days = Object.entries(m.days)
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .map(([date, d]) => ({ date, focus: d.focus, total: Math.round(d.total), sets: d.sets, cardioMin: d.cardioMin, km: d.km, bw: d.bw, pr: !!d.pr }));
+  return { code: doc.code, floorName: doc.name, me: memberView(m, today, Date.now()), series: seriesFor(m, today), days };
+}

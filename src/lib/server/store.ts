@@ -4,6 +4,7 @@ import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FloorDoc } from "../floor";
+import { codeVariants } from "./util";
 
 const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 const prefix = process.env.VERCEL_ENV === "production" ? "floors" : `floors-${process.env.VERCEL_ENV ?? "dev"}`;
@@ -63,12 +64,16 @@ export async function createFloor(doc: FloorDoc): Promise<boolean> {
   }
 }
 
+/** Return from a mutateFloor callback to abort without writing (throttled, not found...). */
+export const SKIP = Symbol("skip");
+
 /** Read-modify-write with optimistic concurrency (etag), retried on conflict. */
 export async function mutateFloor<T>(code: string, fn: (doc: FloorDoc) => T): Promise<{ doc: FloorDoc; result: T } | null> {
   for (let i = 0; i < 4; i++) {
     const r = await readRaw(code);
     if (!r) return null;
     const result = fn(r.doc);
+    if ((result as unknown) === SKIP) return { doc: r.doc, result };
     try {
       await write(r.doc, { etag: r.etag });
       return { doc: r.doc, result };
@@ -77,4 +82,12 @@ export async function mutateFloor<T>(code: string, fn: (doc: FloorDoc) => T): Pr
     }
   }
   return null;
+}
+
+/** The real floor code for a typed one: exact first, else a look-alike variant that exists. */
+export async function resolveCode(code: string): Promise<string | null> {
+  const variants = codeVariants(code);
+  const hits = await Promise.all(variants.map((c) => readFloor(c, true).catch(() => null)));
+  const i = hits.findIndex(Boolean);
+  return i >= 0 ? variants[i] : null;
 }

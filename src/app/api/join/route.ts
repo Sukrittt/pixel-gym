@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { safeToday } from "@/lib/floor";
 import { setSession } from "@/lib/server/session";
-import { mutateFloor, readFloor } from "@/lib/server/store";
-import { cleanName, codeVariants, newMember } from "@/lib/server/util";
+import { mutateFloor, resolveCode } from "@/lib/server/store";
+import { cleanName, newMember } from "@/lib/server/util";
 
 const MAX_MEMBERS = 20;
 
@@ -14,13 +14,7 @@ export async function POST(req: Request) {
   if (code.length < 4 || code.length > 8) return NextResponse.json({ error: "That invite code looks wrong." }, { status: 400 });
   const me = newMember(name, safeToday(body.today));
   // exact code first, then look-alike variants; only touch a floor that exists
-  let target: string | null = null;
-  for (const c of codeVariants(code)) {
-    if (await readFloor(c, true)) {
-      target = c;
-      break;
-    }
-  }
+  const target = await resolveCode(code);
   const r = target
     ? await mutateFloor(target, (doc) => {
         if (doc.members.length >= MAX_MEMBERS) return "full";

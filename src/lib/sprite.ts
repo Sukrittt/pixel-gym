@@ -22,12 +22,15 @@ export type SpriteOpts = {
 };
 
 export const STAND: Pose = { legs: "stand", arms: ["down", "down"] };
+export const HAIR_STYLES = 5;
 
 // ---- palette ---------------------------------------------------------------
 export const SKINS = ["#f6cfa6", "#e8b088", "#c98d5e", "#9a6440", "#6b4128"];
 export const HAIRS = ["#2a1b12", "#5b3a1f", "#a3682c", "#e2bf68", "#b8402f", "#8d8d94"];
 export const SHIRTS = ["#d9534f", "#3b7dd8", "#2fa36b", "#f0a63c", "#8e5bd8", "#e9e4d8", "#38404d"];
 export const SHORTS = ["#2c3e50", "#1e2630", "#5a4632", "#3d5a80", "#6b2d3a"];
+/** How many options each look slot has (UI cycling + server validation). */
+export const LOOK_MAX = { skin: SKINS.length, hair: HAIR_STYLES, hairColor: HAIRS.length, shirt: SHIRTS.length, shorts: SHORTS.length } as const;
 const OUTLINE = "#2a1c16";
 const GLOW = "#ffd23f";
 

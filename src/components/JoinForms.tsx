@@ -42,7 +42,7 @@ export default function JoinForms({ code: preset }: { code?: string }) {
               <input name="floorName" maxLength={20} placeholder="e.g. Iron Paradise" />
             </label>
           </div>
-          <button disabled={busy}>CREATE · GET INVITE CODE</button>
+          <button className="primary" disabled={busy}>CREATE · GET INVITE CODE</button>
         </form>
       )}
       <form className="panel" onSubmit={submit("/api/join")}>
@@ -57,7 +57,7 @@ export default function JoinForms({ code: preset }: { code?: string }) {
             <input name="code" defaultValue={preset} required placeholder="e.g. K7QXMN" style={{ textTransform: "uppercase" }} />
           </label>
         </div>
-        <button className="primary" disabled={busy}>JOIN FLOOR</button>
+        <button className={preset ? "primary" : ""} disabled={busy}>JOIN FLOOR</button>
       </form>
       {err && <p className="err" role="alert">{err}</p>}
     </div>
