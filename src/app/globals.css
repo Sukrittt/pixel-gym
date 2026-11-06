@@ -93,6 +93,11 @@ figcaption { font-size: 11px; margin-top: 4px; }
 .lab .sliders { display: grid; gap: 10px; }
 .lab .sliders label { grid-template-columns: 90px 1fr 36px; align-items: center; display: grid; }
 .lab-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week label { text-align: center; }
+.week select { width: 100%; padding: 6px 2px; font-size: 12px; }
+.week select.on { background: #d8f0c8; }
+@media (max-width: 700px) { .week { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 700px) { .lab { grid-template-columns: 1fr; } }
 
 /* log / me */

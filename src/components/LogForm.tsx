@@ -5,10 +5,10 @@ import type { Entry } from "@/lib/body";
 import { EXERCISES, findExercise } from "@/lib/exercises";
 import { hash64 } from "@/lib/csv";
 import { localDate } from "@/lib/floor";
+import { lift, TEMPLATES, type Lift } from "@/lib/templates";
 
 const LIFTS = EXERCISES.filter((e) => !e.cardio);
 const CARDIO = EXERCISES.filter((e) => e.cardio);
-type Lift = Extract<Entry, { kind: "lift" }>;
 /** An editable row: numbers stay strings while typing so clearing a field doesn't snap to 0. */
 type Row = { exercise: string; sets: string; reps: string; kg: string };
 const LIMITS = { sets: 30, reps: 200, kg: 700 } as const;
@@ -16,14 +16,6 @@ const toRow = (l: Lift): Row => ({ exercise: l.exercise, sets: String(l.sets), r
 const clampNum = (v: string, max: number, min = 0) => Math.min(max, Math.max(min, Number(v) || 0));
 const toLift = (r: Row): Lift => lift(r.exercise, clampNum(r.sets, LIMITS.sets, 1), clampNum(r.reps, LIMITS.reps, 1), clampNum(r.kg, LIMITS.kg));
 
-const lift = (exercise: string, sets: number, reps: number, kg: number): Lift => ({ kind: "lift", exercise, sets, reps, kg });
-const TEMPLATES: Record<string, Lift[]> = {
-  "PUSH DAY": [lift("Bench Press", 4, 8, 60), lift("Overhead Press", 3, 8, 35), lift("Lateral Raise", 3, 15, 8), lift("Tricep Pushdown", 3, 12, 25)],
-  "PULL DAY": [lift("Pull Up", 4, 8, 0), lift("Barbell Row", 3, 10, 50), lift("Lat Pulldown", 3, 12, 45), lift("Bicep Curl", 3, 12, 12)],
-  "LEG DAY": [lift("Squat", 5, 5, 80), lift("Romanian Deadlift", 3, 8, 60), lift("Leg Press", 3, 12, 120), lift("Calf Raise", 3, 15, 40)],
-  ARMS: [lift("Bicep Curl", 3, 12, 12), lift("Hammer Curl", 3, 12, 12), lift("Skull Crusher", 3, 10, 25), lift("Tricep Pushdown", 3, 12, 25)],
-  CORE: [lift("Plank", 3, 1, 0), lift("Hanging Leg Raise", 3, 12, 0), lift("Crunch", 3, 20, 0)],
-};
 
 
 const muscles = (name: string) => {
@@ -35,9 +27,11 @@ const muscles = (name: string) => {
     .join(" · ");
 };
 
-export default function LogForm({ code, loggedToday }: { code: string; loggedToday: string | null }) {
+export default function LogForm({ code, loggedToday, planned = null }: { code: string; loggedToday: string | null; planned?: string | null }) {
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>([]);
+  // a gym day on your plan opens with that workout filled in: tweak the numbers and save
+  const prefill = !loggedToday && planned ? TEMPLATES[planned] : undefined;
+  const [rows, setRows] = useState<Row[]>(() => prefill?.map(toRow) ?? []);
   const [draft, setDraft] = useState({ exercise: "", sets: "3", reps: "8", kg: "" });
   const [cardio, setCardio] = useState({ exercise: "Running", minutes: "", km: "" });
   const [bw, setBw] = useState("");
@@ -155,6 +149,12 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
             Already logged today: {loggedToday}. Anything you save now is added to today.
           </p>
         )}
+        {prefill && (
+          <p className="banner callout" style={{ color: "#fff4d6" }}>
+            Today&apos;s plan: {planned}. It&apos;s filled in below. Change any numbers that differ, then save.
+          </p>
+        )}
+        {!loggedToday && planned === "" && <p className="banner plain">Today is a rest day on your plan. Trained anyway? Log it here.</p>}
         <h3>START FROM A TEMPLATE</h3>
         <div className="lab-row" style={{ marginTop: 0 }}>
           {Object.keys(TEMPLATES).map((k) => (

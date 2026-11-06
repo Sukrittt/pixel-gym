@@ -125,12 +125,22 @@ export function withPump(p: Params, day: DayAgg | undefined, now: number): Param
   return out;
 }
 
-export function streak(days: Record<string, DayAgg>, today: string): number {
-  let d = trained(days[today]) ? today : addDays(today, -1);
+/** Weekly plan: 7 slots, index = weekday (0 = Sunday). "" = planned rest, anything else = gym day. */
+export type Plan = string[];
+export const weekday = (date: string) => new Date(date + "T00:00:00Z").getUTCDay();
+/** Today's plan slot, or null when there is no plan. */
+export const planFor = (plan: Plan | undefined, date: string): string | null => (plan?.some(Boolean) ? plan[weekday(date)] ?? "" : null);
+
+/**
+ * Consecutive days trained. With a plan it counts sessions instead, and planned rest
+ * days (or today, not done yet) don't break it: only a missed gym day does.
+ */
+export function streak(days: Record<string, DayAgg>, today: string, plan?: Plan): number {
   let n = 0;
-  while (trained(days[d])) {
-    n++;
-    d = addDays(d, -1);
+  for (let k = 0, d = today; k < 400; k++, d = addDays(d, -1)) {
+    if (trained(days[d])) n++;
+    else if (d === today || planFor(plan, d) === "") continue;
+    else break;
   }
   return n;
 }

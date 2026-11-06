@@ -10,6 +10,7 @@ import FloorScreen from "./FloorScreen";
 
 const POLL_MS = 30_000;
 const MAX_TOASTS = 3;
+const dayName = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en", { weekday: "long", timeZone: "UTC" });
 const ZONE_NAME: Record<string, string> = {
   weights: "the free weights", squat: "a squat rack", cardio: "the cardio strip", mat: "the mats",
   bar: "the smoothie bar scale", lockers: "the lockers", outside: "the bench outside",
@@ -178,10 +179,25 @@ export default function LiveFloor({
         </div>
       )}
 
-      {me && !t && (
+      {me && !t && me.planToday === "" && (
+        <p className="banner plain">
+          Rest day on your plan. Your avatar is recovering at the lockers and your streak is safe.&nbsp;<Link href="/me">Edit your week</Link>
+        </p>
+      )}
+      {me && !t && me.planToday !== "" && (
         <div className="banner callout">
           <span>
-            <b>You&apos;re on the bench outside, greyed out.</b> Log today&apos;s training and your avatar walks in to the matching station.
+            {me.planToday ? (
+              <>
+                <b>{dayName(view.today)} is a gym day{me.planToday !== "GYM" ? `: ${me.planToday}` : ""}.</b> Back from the gym? Log it and your avatar walks in from the
+                bench outside.
+              </>
+            ) : (
+              <>
+                <b>You&apos;re on the bench outside, greyed out.</b> Log today&apos;s training and your avatar walks in to the matching station. Only train on some days?{" "}
+                <Link href="/me">Set your gym week</Link>.
+              </>
+            )}
           </span>
           <Link className="btn primary" href="/log">LOG TODAY</Link>
         </div>

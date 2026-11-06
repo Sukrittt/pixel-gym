@@ -33,7 +33,7 @@ function rnd(a: Agent) {
 }
 
 function zoneOf(m: MemberView): Zone {
-  return m.today ? m.today.zone : "outside";
+  return m.today ? m.today.zone : m.planToday === "" ? "lockers" : "outside";
 }
 
 /** Stable spot per member: members in a zone sorted by id get spots in order. */
@@ -248,7 +248,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         const working = !a.path.length && a.act === "work" && WORK_ZONES.includes(a.zone);
         const sweat = today && working && wall - Date.parse(today.at) < 90 * 60000 ? Math.floor(t / 250) % 6 : undefined;
         const glow = !!today?.pr && wall - Date.parse(today.pr) < 15 * 60000 && Math.floor(t / 400) % 3 !== 0;
-        const spr = spriteCanvas({ params: m.params, look: m.look, sat: m.sat, pose: poseFor(a, m, t + a.seed % 500), sweat, glow, grey: !today });
+        const spr = spriteCanvas({ params: m.params, look: m.look, sat: m.sat, pose: poseFor(a, m, t + a.seed % 500), sweat, glow, grey: !today && m.planToday !== "" });
         ctx.drawImage(spr, Math.round(a.x - 16), Math.round(a.y - 46));
       }
       if (dark > 0) {
@@ -268,9 +268,9 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         // nudge tags up until they stop overlapping ones already placed
         while (placed.some(([px, py, pw]) => tx < px + pw && px < tx + w && Math.abs(py - ty) < 10)) ty += under ? 10 : -10;
         placed.push([tx, ty, w]);
-        ctx.fillStyle = a.id === meId ? "rgba(120,80,0,0.85)" : m.today ? "rgba(25,18,12,0.72)" : "rgba(60,60,60,0.6)";
+        ctx.fillStyle = a.id === meId ? "rgba(120,80,0,0.85)" : m.today || m.planToday === "" ? "rgba(25,18,12,0.72)" : "rgba(60,60,60,0.6)";
         ctx.fillRect(tx, ty, w, 9);
-        drawText(ctx, tag, tx + 2, ty + 2, a.id === meId ? "#ffe9a8" : m.today ? "#fff8e8" : "#cfcfcf");
+        drawText(ctx, tag, tx + 2, ty + 2, a.id === meId ? "#ffe9a8" : m.today || m.planToday === "" ? "#fff8e8" : "#cfcfcf");
         if (a.id === meId && !under) {
           // bobbing "YOU" marker so you can find yourself instantly
           const by = ty - 9 - (Math.floor(t / 300) % 2);

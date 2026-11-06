@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { applyEntry, DEFAULT_START, headroom, sessionGain, simulate, withPump, addDays, type History } from "./body";
+import { applyEntry, DEFAULT_START, headroom, planFor, sessionGain, simulate, streak, withPump, addDays, type History } from "./body";
 import { parseWorkoutCsv, parseDate, parseCsv } from "./csv";
 import { EXERCISES, findExercise } from "./exercises";
 
@@ -208,5 +208,21 @@ describe("csv import dedupe keys", () => {
     expect(r.rows).toHaveLength(2);
     expect(r.rows[0].key).not.toBe(r.rows[1].key);
     expect(parseWorkoutCsv(csv).rows.map((x) => x.key)).toEqual(r.rows.map((x) => x.key)); // stable
+  });
+});
+
+describe("weekly plan", () => {
+  // 2026-01-06 is a Tuesday. Plan: Tue push, Thu pull, rest otherwise.
+  const plan = ["", "", "PUSH DAY", "", "PULL DAY", "", ""];
+  it("rest days don't break the streak, a missed gym day does", () => {
+    const h = fresh();
+    for (const d of ["2026-01-06", "2026-01-08", "2026-01-13", "2026-01-15"]) push(h, d);
+    expect(planFor(plan, "2026-01-06")).toBe("PUSH DAY");
+    expect(planFor(plan, "2026-01-07")).toBe("");
+    expect(planFor(undefined, "2026-01-07")).toBeNull();
+    expect(streak(h.days, "2026-01-18", plan)).toBe(4); // Sunday after: 4 sessions, rest days skipped
+    expect(streak(h.days, "2026-01-20", plan)).toBe(4); // gym day today, not done yet
+    expect(streak(h.days, "2026-01-21", plan)).toBe(0); // missed Tuesday
+    expect(streak(h.days, "2026-01-16")).toBe(1); // without a plan, calendar days: only Thursday counts
   });
 });
