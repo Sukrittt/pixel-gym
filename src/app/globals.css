@@ -145,3 +145,4 @@ input.invalid { border-color: #b8402f; box-shadow: 0 0 0 2px #b8402f55; }
   .banner { padding: 8px 10px; gap: 8px; font-size: 14px; }
 }
 .nav a[aria-current="page"] { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 420px) { .nav { gap: 12px; } .nav a { font-size: 12px; } }

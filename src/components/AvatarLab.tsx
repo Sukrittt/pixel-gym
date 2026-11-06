@@ -74,7 +74,7 @@ export default function AvatarLab() {
               <figure key={k + v} style={{ margin: 0, textAlign: "center" }}>
                 <SpriteView opts={{ params: { ...DEFAULT_START, [k]: v }, look }} scale={2} label={`${k} ${v}`} />
                 <figcaption>
-                  {k.slice(0, 4)} {v}
+                  {k} {v}
                 </figcaption>
               </figure>
             )),

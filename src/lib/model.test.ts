@@ -163,3 +163,13 @@ describe("world layout", () => {
     }
   });
 });
+
+describe("exercise search while typing", () => {
+  it("resolves prefixes to the most common exercise", () => {
+    expect(findExercise("bench")?.name).toBe("Bench Press");
+    expect(findExercise("squ")?.name).toBe("Squat");
+    expect(findExercise("lat p")?.name).toBe("Lat Pulldown");
+    expect(findExercise("be")).toBeUndefined(); // too short to guess
+    expect(findExercise("Mystery Machine 3000")).toBeUndefined();
+  });
+});

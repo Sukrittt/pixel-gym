@@ -6,7 +6,7 @@ export default function LabPage() {
   return (
     <>
       <h1>Avatar lab</h1>
-      <p className="muted">Six params, each 0–10. Every body part is drawn procedurally from its param, so you can judge whether the detail reads.</p>
+      <p className="muted">Six body params (0–10) plus skin saturation. Every body part is drawn procedurally from its own param: drag a slider and watch that part change.</p>
       <AvatarLab />
     </>
   );

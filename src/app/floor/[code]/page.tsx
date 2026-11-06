@@ -18,6 +18,12 @@ function parseGain(raw: string | string[] | undefined): Partial<Record<Param, nu
   return out;
 }
 
+export async function generateMetadata({ params }: PageProps<"/floor/[code]">) {
+  const { code } = await params;
+  const floor = await readFloor(code.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+  return { title: floor ? `${floor.name} · Pixel Gym` : "Not found · Pixel Gym" };
+}
+
 export default async function FloorPage({ params, searchParams }: PageProps<"/floor/[code]">) {
   const { code } = await params;
   const q = await searchParams;

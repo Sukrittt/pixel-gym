@@ -1,7 +1,7 @@
 import { simulate, streak, weeklyVolume, withPump, addDays, type DayAgg, type History, type Params, type Snapshot } from "./body";
 import type { Look } from "./sprite";
 
-export type Member = History & { id: string; name: string; look: Look; key?: string; recentLogs?: string[] };
+export type Member = History & { id: string; name: string; look: Look; key?: string; recentLogs?: string[]; importedDays?: string[] };
 export type EmoteKind = "bump" | "flex" | "clap";
 export type Emote = { id: string; from: string; to: string; kind: EmoteKind; at: string };
 export type FloorDoc = { code: string; name: string; created: string; members: Member[]; emotes: Emote[] };

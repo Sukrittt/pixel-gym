@@ -24,6 +24,13 @@ const TEMPLATES: Record<string, Lift[]> = {
   CORE: [lift("Plank", 3, 1, 0), lift("Hanging Leg Raise", 3, 12, 0), lift("Crunch", 3, 20, 0)],
 };
 
+/** Tiny stable string hash (FNV-1a) for the idempotency key. */
+const hash = (s: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
+};
+
 const muscles = (name: string) => {
   const ex = findExercise(name);
   if (!ex) return "";
@@ -42,17 +49,15 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState("");
-  // one id per exact submission: a retried save after a lost response is ignored server-side,
-  // but any edit makes it a new submission
-  const newId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const [logId, setLogId] = useState(newId);
+  // per-visit nonce; the log id = nonce + hash of the exact payload, so an identical retry
+  // (lost response, double tap) dedupes server-side and any change is a new submission
+  const [nonce] = useState(() => Math.random().toString(36).slice(2, 10));
   const [bwInvalid, setBwInvalid] = useState(false);
   const bwRef = useRef<HTMLInputElement>(null);
   // any edit clears a stale validation message and starts a new submission
   const touch = <T,>(set: (v: T) => void) => (v: T) => {
     setMsg("");
     setBwInvalid(false);
-    setLogId(newId());
     set(v);
   };
   const setRowsT = touch(setRows);
@@ -107,6 +112,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     setBusy(true);
     setMsg("");
     try {
+      const logId = nonce + hash(JSON.stringify(list));
       const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Could not save.");
@@ -118,7 +124,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       router.push(`/floor/${j.code ?? code}?logged=1&gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
     } catch (x) {
       setBusy(false);
-      setMsg((x as Error).message || "Network error, try again.");
+      setMsg(x instanceof TypeError ? "Network error: check your connection and try again." : (x as Error).message || "Could not save.");
     }
   };
 
@@ -127,7 +133,11 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
     try {
       const r = await fetch("/api/import", { method: "POST", body: await file.text() });
       const j = await r.json().catch(() => ({}));
-      setImp(r.ok ? `Imported ${j.sets} sets over ${j.days} days from ${j.format} (${j.skipped} rows skipped). Open your floor to see the new you.` : j.error ?? "Import failed.");
+      setImp(
+        r.ok
+          ? `Imported ${j.sets} sets over ${j.days} days from ${j.format}${j.alreadyImported ? ` (${j.alreadyImported} sets from days you'd already imported were skipped)` : ""}${j.skipped ? `, ${j.skipped} rows not recognised` : ""}. Open your floor to see the new you.`
+          : j.error ?? "Import failed.",
+      );
     } catch {
       setImp("Import failed: network error.");
     }
@@ -158,7 +168,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setLogId(newId()), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
+              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
             </label>
             <label>
               SETS

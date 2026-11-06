@@ -100,7 +100,9 @@ export function InspectCard({
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;
-    loadSeries().then((s) => live && setSeries(s));
+    loadSeries()
+      .then((s) => live && setSeries(s))
+      .catch(() => live && setSeries([]));
     return () => {
       live = false;
     };
@@ -146,7 +148,7 @@ export function InspectCard({
         <div className="card-head">
           <h2>{m.name}</h2>
           <span className="muted">
-            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {m.today ? m.today.focus : "not in today"}
+            streak {m.streak}d · week {Math.round(m.weekly).toLocaleString()} kg · {m.today ? m.today.focus : "off today"}
           </span>
           <button className="x" onClick={onClose} aria-label="close">
             ×
@@ -174,6 +176,8 @@ export function InspectCard({
         <h3>TIMELAPSE</h3>
         {!series ? (
           <p className="muted">loading…</p>
+        ) : !series.length ? (
+          <p className="muted">Couldn&apos;t load the timelapse. Check your connection and reopen the card.</p>
         ) : m.weekly === 0 && m.days <= 1 && !m.today ? (
           <p className="muted">{isMe ? "You haven't" : `${m.name} hasn't`} logged a workout yet.</p>
         ) : (

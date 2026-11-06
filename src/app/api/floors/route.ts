@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const name = cleanName(body.name);
   if (!name) return NextResponse.json({ error: "Pick a name (letters and numbers)." }, { status: 400 });
-  const floorName = (cleanName(body.floorName) ?? `${name}'S GYM`).slice(0, 20);
+  const floorName = cleanName(body.floorName, 20) ?? `${name}'S GYM`.slice(0, 20);
   const today = safeToday(body.today);
   const me = newMember(name, today);
   for (let i = 0; i < 5; i++) {

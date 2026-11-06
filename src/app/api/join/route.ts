@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { safeToday } from "@/lib/floor";
-import { setSession } from "@/lib/server/session";
+import { currentMember, setSession } from "@/lib/server/session";
 import { mutateFloor, resolveCode } from "@/lib/server/store";
 import { cleanName, newMember } from "@/lib/server/util";
 
@@ -15,6 +15,9 @@ export async function POST(req: Request) {
   const me = newMember(name, safeToday(body.today));
   // exact code first, then look-alike variants; only touch a floor that exists
   const target = await resolveCode(code);
+  // already on this floor (typed your own code): keep your avatar, don't make a second one
+  const cur = target ? await currentMember() : null;
+  if (cur && cur.doc.code === target) return NextResponse.json({ code: target, already: true });
   const r = target
     ? await mutateFloor(target, (doc) => {
         if (doc.members.length >= MAX_MEMBERS) return "full";

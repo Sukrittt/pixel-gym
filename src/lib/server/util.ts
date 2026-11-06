@@ -12,8 +12,8 @@ export function newCode() {
   return Array.from(randomBytes(6), (b) => A[b % A.length]).join("");
 }
 
-export function cleanName(raw: unknown): string | null {
-  const s = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim().slice(0, 12);
+export function cleanName(raw: unknown, max = 12): string | null {
+  const s = sanitize(String(raw ?? "")).replace(/\s+/g, " ").trim().slice(0, max);
   return s.length >= 1 ? s : null;
 }
 const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();

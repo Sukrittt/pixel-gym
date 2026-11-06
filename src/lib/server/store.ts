@@ -90,7 +90,8 @@ export async function mutateFloor<T>(code: string, fn: (doc: FloorDoc) => T): Pr
  * `exactMissed` skips re-reading the exact code when the caller already checked it.
  */
 export async function resolveCode(code: string, exactMissed = false): Promise<string | null> {
-  const variants = codeVariants(code).slice(exactMissed ? 1 : 0);
+  if (!exactMissed && (await readFloor(code, true))) return code; // common case: one read
+  const variants = codeVariants(code).slice(1);
   const hits = await Promise.all(variants.map((c) => readFloor(c, true)));
   const i = hits.findIndex(Boolean);
   return i >= 0 ? variants[i] : null;

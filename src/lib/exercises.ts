@@ -115,7 +115,9 @@ export function findExercise(raw: string): Exercise | undefined {
       bestScore = score;
     }
   }
-  return best;
+  if (best || n.length < 3) return best;
+  // prefix while typing: "bench" -> Bench Press, "lat p" -> Lat Pulldown (list order = most common first)
+  return EXERCISES.find((e) => norm(e.name).startsWith(n)) ?? EXERCISES.find((e) => e.aliases?.some((a) => norm(a).startsWith(n)));
 }
 
 /** Which station an exercise sends you to, and the label on your name tag. */

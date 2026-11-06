@@ -261,7 +261,7 @@ export default function FloorCanvas({ view, meId, onSelect }: { view: FloorView;
         if (!m) continue;
         const tag = tagFor(m);
         const w = textWidth(tag) + 4;
-        const tx = Math.round(a.x - w / 2);
+        const tx = Math.max(1, Math.min(WW - w - 1, Math.round(a.x - w / 2))); // never clipped by the floor edge
         // tags of lifters by the back wall go under their feet instead of over the windows
         const under = a.y - 54 < 50;
         let ty = Math.round(under ? a.y + 3 : a.y - 54);
