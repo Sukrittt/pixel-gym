@@ -1,0 +1,37 @@
+"use client";
+import { useCallback, useState } from "react";
+import type { Snapshot } from "@/lib/body";
+import type { EmoteKind, FloorView, MemberView } from "@/lib/floor";
+import { InspectCard } from "./Avatar";
+import FloorCanvas from "./FloorCanvas";
+
+/** Floor canvas + click-to-inspect card. Works for demo and real floors. */
+export default function FloorScreen({
+  view, meId, onEmote, loadSeries,
+}: {
+  view: FloorView;
+  meId?: string;
+  onEmote?: (to: string, k: EmoteKind) => void;
+  loadSeries: (id: string) => Promise<Snapshot[]>;
+}) {
+  const [sel, setSel] = useState<MemberView | null>(null);
+  const selId = sel?.id;
+  const load = useCallback(() => (selId ? loadSeries(selId) : Promise.resolve([])), [selId, loadSeries]);
+  const fresh = sel && (view.members.find((m) => m.id === sel.id) ?? sel);
+  return (
+    <>
+      <FloorCanvas view={view} meId={meId} onSelect={setSel} />
+      <p className="muted">Click any avatar to inspect their body, send an emote, or scrub their timelapse.</p>
+      {fresh && (
+        <InspectCard
+          m={fresh}
+          isMe={fresh.id === meId}
+          floorName={view.name}
+          onClose={() => setSel(null)}
+          onEmote={onEmote && ((k) => onEmote(fresh.id, k))}
+          loadSeries={load}
+        />
+      )}
+    </>
+  );
+}

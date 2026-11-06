@@ -9,11 +9,17 @@ export function parseCsv(text: string, delim = ","): string[][] {
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (q) {
-      if (c === '"' && text[i + 1] === '"') (cell += '"'), i++;
+      if (c === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      }
       else if (c === '"') q = false;
       else cell += c;
     } else if (c === '"') q = true;
-    else if (c === delim) row.push(cell), (cell = "");
+    else if (c === delim) {
+      row.push(cell);
+      cell = "";
+    }
     else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;
       row.push(cell);
@@ -22,7 +28,10 @@ export function parseCsv(text: string, delim = ","): string[][] {
       cell = "";
     } else cell += c;
   }
-  if (cell || row.length) row.push(cell), rows.push(row);
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 

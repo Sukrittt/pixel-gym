@@ -37,7 +37,10 @@ export const DEFAULT_START: Params = { shoulders: 1.5, arms: 1.5, chest: 1.5, ba
 // ---- model constants -------------------------------------------------------
 export const GAIN = 1.0; // max param gain from one saturating session at 0
 export const V0 = 2500; // volume-load that gives ~63% of max session gain
-export const WEEKLY_CAP = 12000; // weekly volume past which extra sets are junk
+// legs move far more load per set (leg press, squats), so they need more volume
+const V0_BY: Partial<Record<Group, number>> = { legs: 6000, back: 3500 };
+export const v0 = (m: Group) => V0_BY[m] ?? V0;
+const weeklyCap = (m: Group) => 5 * v0(m); // weekly volume past which extra sets are junk
 export const PUMP = 1.2; // temporary same-day boost so a session shows instantly
 export const DECAY_AFTER = 7; // days without a log before decay
 export const DECAY = 0.1; // per day
@@ -56,13 +59,14 @@ export function daysBetween(a: string, b: string): number {
 }
 
 /** Diminishing returns: more headroom near 0, almost none near 10. */
-export const headroom = (p: number) => Math.pow(Math.max(0, 10 - p) / 10, 1.6);
+export const headroom = (p: number) => Math.pow(Math.max(0, 10 - p) / 10, 2.2);
 
 /** Gain for one muscle from one day's volume, given trailing weekly volume. */
-export function sessionGain(p: number, vol: number, weekly: number): number {
+export function sessionGain(p: number, vol: number, weekly: number, m: Group = "chest"): number {
   if (vol <= 0) return 0;
-  const sat = 1 - Math.exp(-vol / V0);
-  const junk = weekly > WEEKLY_CAP ? WEEKLY_CAP / weekly : 1;
+  const sat = 1 - Math.exp(-vol / v0(m));
+  const cap = weeklyCap(m);
+  const junk = weekly > cap ? cap / weekly : 1;
   return GAIN * sat * headroom(p) * junk;
 }
 
@@ -83,10 +87,10 @@ export function simulate(h: History, until: string): Snapshot[] {
     const day = h.days[date];
     const weekly = (m: Group) => week.reduce((s, w) => s + (w[m] ?? 0), 0);
     if (trained(day)) {
-      for (const m of MUSCLES) p[m] = clamp(p[m] + sessionGain(p[m], day!.vol[m] ?? 0, weekly(m)));
+      for (const m of MUSCLES) p[m] = clamp(p[m] + sessionGain(p[m], day!.vol[m] ?? 0, weekly(m), m));
       lastTrain = date;
       // cardio and lifting burn a little fat
-      p.bodyfat -= 0.12 * (1 - Math.exp(-day!.cardioMin / 40)) + (day!.sets > 0 ? 0.02 : 0);
+      p.bodyfat -= 0.05 * (1 - Math.exp(-day!.cardioMin / 40)) + (day!.sets > 0 ? 0.01 : 0);
     }
     if (day?.bw) {
       // weight trend: rising bodyweight EMA adds fat, falling removes it
@@ -99,13 +103,14 @@ export function simulate(h: History, until: string): Snapshot[] {
       for (const m of MUSCLES) p[m] = clamp(p[m] - DECAY);
       p.bodyfat += 0.05;
     }
+    p.bodyfat += (5 - p.bodyfat) * 0.006; // drift back toward average without effort
     p.bodyfat = clamp(p.bodyfat);
     week.push(day?.vol ?? {});
     if (week.length > 7) week.shift();
     // skin saturation: share of the last 14 days with training (7+ = full)
     let active = 0;
     for (let k = 0; k < 14; k++) if (trained(h.days[addDays(date, -k)])) active++;
-    out.push({ date, p: { ...p }, sat: 0.3 + 0.75 * Math.min(1, active / 7) });
+    out.push({ date, p: { ...p }, sat: 0.55 + 0.5 * Math.min(1, active / 7) });
   }
   return out;
 }
@@ -116,7 +121,7 @@ export function withPump(p: Params, day: DayAgg | undefined, now: number): Param
   const hours = (now - Date.parse(day.at)) / 3600000;
   const fade = clamp(1 - hours / 4, 0, 1);
   const out = { ...p };
-  for (const m of MUSCLES) out[m] = clamp(p[m] + PUMP * (1 - Math.exp(-(day.vol[m] ?? 0) / V0)) * fade);
+  for (const m of MUSCLES) out[m] = clamp(p[m] + PUMP * (1 - Math.exp(-(day.vol[m] ?? 0) / v0(m))) * fade);
   return out;
 }
 
