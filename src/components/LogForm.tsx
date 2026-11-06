@@ -7,78 +7,128 @@ import { localDate } from "@/lib/floor";
 
 const LIFTS = EXERCISES.filter((e) => !e.cardio);
 const CARDIO = EXERCISES.filter((e) => e.cardio);
+type Lift = Extract<Entry, { kind: "lift" }>;
 
-const label = (e: Entry) =>
-  e.kind === "lift" ? `${e.exercise} · ${e.sets}×${e.reps} @ ${e.kg || "BW"}${e.kg ? " kg" : ""}`
-  : e.kind === "cardio" ? `${e.exercise ?? "Cardio"} · ${e.minutes} min${e.km ? ` · ${e.km} km` : ""}`
-  : e.kind === "weight" ? `Bodyweight ${e.bw} kg` : "Rest day";
+const lift = (exercise: string, sets: number, reps: number, kg: number): Lift => ({ kind: "lift", exercise, sets, reps, kg });
+const TEMPLATES: Record<string, Lift[]> = {
+  "PUSH DAY": [lift("Bench Press", 4, 8, 60), lift("Overhead Press", 3, 8, 35), lift("Lateral Raise", 3, 15, 8), lift("Tricep Pushdown", 3, 12, 25)],
+  "PULL DAY": [lift("Pull Up", 4, 8, 0), lift("Barbell Row", 3, 10, 50), lift("Lat Pulldown", 3, 12, 45), lift("Bicep Curl", 3, 12, 12)],
+  "LEG DAY": [lift("Squat", 5, 5, 80), lift("Romanian Deadlift", 3, 8, 60), lift("Leg Press", 3, 12, 120), lift("Calf Raise", 3, 15, 40)],
+  ARMS: [lift("Bicep Curl", 3, 12, 12), lift("Hammer Curl", 3, 12, 12), lift("Skull Crusher", 3, 10, 25), lift("Tricep Pushdown", 3, 12, 25)],
+  CORE: [lift("Plank", 3, 1, 0), lift("Hanging Leg Raise", 3, 12, 0), lift("Crunch", 3, 20, 0)],
+};
+
+const muscles = (name: string) => {
+  const ex = findExercise(name);
+  if (!ex) return "";
+  return Object.entries(ex.m)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k)
+    .join(" · ");
+};
 
 export default function LogForm({ code }: { code: string }) {
   const router = useRouter();
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [lift, setLift] = useState({ exercise: "", sets: "3", reps: "8", kg: "" });
+  const [rows, setRows] = useState<Lift[]>([]);
+  const [draft, setDraft] = useState({ exercise: "", sets: "3", reps: "8", kg: "" });
   const [cardio, setCardio] = useState({ exercise: "Running", minutes: "", km: "" });
   const [bw, setBw] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState("");
 
-  const addLift = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ex = findExercise(lift.exercise);
-    if (!ex || ex.cardio) return setMsg(`Don't know "${lift.exercise}". Pick one from the list.`);
+  /** The draft row as an entry, or null if empty / unknown. */
+  const draftEntry = (): Lift | null | "unknown" => {
+    if (!draft.exercise.trim()) return null;
+    const ex = findExercise(draft.exercise);
+    if (!ex || ex.cardio) return "unknown";
+    return lift(ex.name, +draft.sets || 1, +draft.reps || 1, +draft.kg || 0);
+  };
+
+  const addDraft = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const d = draftEntry();
+    if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions.`);
+    if (!d) return setMsg("Type an exercise first.");
     setMsg("");
-    setEntries((v) => [...v, { kind: "lift", exercise: ex.name, sets: +lift.sets || 1, reps: +lift.reps || 1, kg: +lift.kg || 0 }]);
-    setLift((l) => ({ ...l, exercise: "" }));
+    setRows((v) => [...v, d]);
+    setDraft((x) => ({ ...x, exercise: "" }));
   };
 
-  const all = (): Entry[] => {
-    const out = [...entries];
-    if (+cardio.minutes > 0) out.push({ kind: "cardio", exercise: cardio.exercise, minutes: +cardio.minutes, km: +cardio.km || 0 });
-    if (+bw > 0) out.push({ kind: "weight", bw: +bw });
-    return out;
-  };
+  const edit = (i: number, k: "sets" | "reps" | "kg", v: string) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: +v || 0 } : r)));
 
-  const save = async (list: Entry[]) => {
-    if (!list.length) return setMsg("Add at least one thing.");
-    setBusy(true);
-    const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate() }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      setBusy(false);
-      return setMsg(j.error ?? "Could not save.");
+  const save = async (rest = false) => {
+    let list: Entry[] = [];
+    if (rest) list = [{ kind: "rest" }];
+    else {
+      const d = draftEntry();
+      if (d === "unknown") return setMsg(`Don't know "${draft.exercise}". Pick one from the suggestions or clear it.`);
+      list = [...rows, ...(d ? [d] : [])].map((r) => ({ ...r, sets: Math.max(1, r.sets), reps: Math.max(1, r.reps) }));
+      if (+cardio.minutes > 0) list.push({ kind: "cardio", exercise: cardio.exercise, minutes: +cardio.minutes, km: +cardio.km || 0 });
+      if (+bw > 0) list.push({ kind: "weight", bw: +bw });
     }
-    router.push(`/floor/${code}${j.pr ? "?pr=1" : ""}`);
+    if (!list.length) return setMsg("Add a lift, some cardio or your bodyweight first. Or tap a template above.");
+    setBusy(true);
+    setMsg("");
+    try {
+      const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate() }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error ?? "Could not save.");
+      const gain = Object.entries(j.gains ?? {})
+        .filter(([, v]) => Math.abs(v as number) >= 0.05)
+        .map(([k, v]) => `${k}:${v}`)
+        .join("|");
+      router.push(`/floor/${j.code ?? code}?gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
+    } catch (x) {
+      setBusy(false);
+      setMsg((x as Error).message || "Network error, try again.");
+    }
   };
 
   const importCsv = async (file: File) => {
     setImp("Importing…");
-    const r = await fetch("/api/import", { method: "POST", body: await file.text() });
-    const j = await r.json().catch(() => ({}));
-    setImp(r.ok ? `Imported ${j.sets} sets over ${j.days} days from ${j.format} (${j.skipped} rows skipped).` : j.error ?? "Import failed.");
+    try {
+      const r = await fetch("/api/import", { method: "POST", body: await file.text() });
+      const j = await r.json().catch(() => ({}));
+      setImp(r.ok ? `Imported ${j.sets} sets over ${j.days} days from ${j.format} (${j.skipped} rows skipped). Open your floor to see the new you.` : j.error ?? "Import failed.");
+    } catch {
+      setImp("Import failed: network error.");
+    }
   };
+
+  const pending = draftEntry();
 
   return (
     <div className="grid2">
       <div className="panel">
-        <form onSubmit={addLift}>
-          <h3>LIFT</h3>
+        <h3>START FROM A TEMPLATE</h3>
+        <div className="lab-row" style={{ marginTop: 0 }}>
+          {Object.keys(TEMPLATES).map((k) => (
+            <button key={k} type="button" onClick={() => setRows(TEMPLATES[k].map((r) => ({ ...r })))}>
+              {k}
+            </button>
+          ))}
+        </div>
+        <p className="muted">Then tweak the numbers to what you actually did.</p>
+
+        <form onSubmit={addDraft}>
+          <h3>ADD A LIFT</h3>
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={lift.exercise} onChange={(e) => setLift({ ...lift, exercise: e.target.value })} placeholder="Bench Press" autoFocus />
+              <input list="exercises" value={draft.exercise} onChange={(e) => setDraft({ ...draft, exercise: e.target.value })} placeholder="Start typing: bench, squat, curl…" />
             </label>
             <label>
               SETS
-              <input type="number" min={1} max={30} value={lift.sets} onChange={(e) => setLift({ ...lift, sets: e.target.value })} />
+              <input type="number" inputMode="numeric" min={1} max={30} value={draft.sets} onChange={(e) => setDraft({ ...draft, sets: e.target.value })} />
             </label>
             <label>
               REPS
-              <input type="number" min={1} max={200} value={lift.reps} onChange={(e) => setLift({ ...lift, reps: e.target.value })} />
+              <input type="number" inputMode="numeric" min={1} max={200} value={draft.reps} onChange={(e) => setDraft({ ...draft, reps: e.target.value })} />
             </label>
             <label>
               KG
-              <input type="number" min={0} max={700} step={0.5} value={lift.kg} onChange={(e) => setLift({ ...lift, kg: e.target.value })} placeholder="BW" />
+              <input type="number" inputMode="decimal" min={0} max={700} step={0.5} value={draft.kg} onChange={(e) => setDraft({ ...draft, kg: e.target.value })} placeholder="0 = BW" />
             </label>
           </div>
           <datalist id="exercises">
@@ -86,18 +136,46 @@ export default function LogForm({ code }: { code: string }) {
               <option key={e.name} value={e.name} />
             ))}
           </datalist>
-          <p>
-            <button>+ ADD</button>
+          <p className="row" style={{ alignItems: "center" }}>
+            <button style={{ flex: "0 0 auto" }}>+ ADD</button>
+            <span className="muted">{pending && pending !== "unknown" ? `works: ${muscles(pending.exercise)}` : pending === "unknown" ? "not in the exercise list" : ""}</span>
           </p>
         </form>
-        <ul className="entries">
-          {entries.map((e, i) => (
-            <li key={i}>
-              {label(e)}
-              <button onClick={() => setEntries((v) => v.filter((_, j) => j !== i))} aria-label="remove">×</button>
-            </li>
-          ))}
-        </ul>
+
+        {rows.length > 0 && (
+          <table className="sets">
+            <thead>
+              <tr>
+                <th>EXERCISE</th>
+                <th>SETS</th>
+                <th>REPS</th>
+                <th>KG</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    {r.exercise}
+                    <div className="muted">{muscles(r.exercise)}</div>
+                  </td>
+                  {(["sets", "reps", "kg"] as const).map((k) => (
+                    <td key={k}>
+                      <input type="number" inputMode="decimal" min={0} value={r[k]} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${r.exercise} ${k}`} />
+                    </td>
+                  ))}
+                  <td>
+                    <button type="button" onClick={() => setRows((v) => v.filter((_, j) => j !== i))} aria-label={`remove ${r.exercise}`}>
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
         <h3>CARDIO (OPTIONAL)</h3>
         <div className="row">
           <label>
@@ -110,35 +188,42 @@ export default function LogForm({ code }: { code: string }) {
           </label>
           <label>
             MINUTES
-            <input type="number" min={0} value={cardio.minutes} onChange={(e) => setCardio({ ...cardio, minutes: e.target.value })} />
+            <input type="number" inputMode="numeric" min={0} value={cardio.minutes} onChange={(e) => setCardio({ ...cardio, minutes: e.target.value })} />
           </label>
           <label>
             KM
-            <input type="number" min={0} step={0.1} value={cardio.km} onChange={(e) => setCardio({ ...cardio, km: e.target.value })} />
+            <input type="number" inputMode="decimal" min={0} step={0.1} value={cardio.km} onChange={(e) => setCardio({ ...cardio, km: e.target.value })} />
+          </label>
+          <label>
+            BODYWEIGHT KG
+            <input type="number" inputMode="decimal" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBw(e.target.value)} />
           </label>
         </div>
-        <h3>BODYWEIGHT (OPTIONAL)</h3>
-        <label style={{ maxWidth: 160 }}>
-          KG
-          <input type="number" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBw(e.target.value)} />
-        </label>
         <div className="actions">
-          <button className="primary" disabled={busy} onClick={() => save(all())}>SAVE & GO TO FLOOR</button>
-          <button disabled={busy} onClick={() => save([{ kind: "rest" }])}>LOG REST DAY</button>
-          {msg && <span className="err">{msg}</span>}
+          <button className="primary big" disabled={busy} onClick={() => save()}>
+            {busy ? "SAVING…" : "SAVE & GO TO FLOOR"}
+          </button>
+          <button disabled={busy} onClick={() => save(true)}>
+            LOG REST DAY
+          </button>
         </div>
+        {msg && <p className="err" role="alert">{msg}</p>}
       </div>
       <div className="panel">
         <h3>IMPORT FROM HEVY / STRONG</h3>
-        <p className="muted">Export your workouts as CSV from Hevy (Settings → Export) or Strong (Settings → Export data), then drop the file here. Your whole history replays into your body.</p>
-        <input type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
-        {imp && <p>{imp}</p>}
-        <h3>HOW IT GROWS</h3>
         <p className="muted">
-          Each set adds volume (sets × reps × kg) to muscle groups. Push work grows chest and shoulders, pulls grow your
-          back, squats and deadlifts grow legs, cardio and a falling bodyweight trend cut bodyfat. Gains are fast at first and
-          plateau later. Seven days without a log and everything starts to shrink.
+          Export your workouts as CSV from Hevy (Profile → Settings → Export data) or Strong (Settings → Export strong data), then pick the file. Your whole history replays into your body.
         </p>
+        <input type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} aria-label="CSV file" />
+        {imp && <p role="status">{imp}</p>}
+        <h3>HOW IT GROWS</h3>
+        <ul className="muted">
+          <li>Every set adds volume (sets × reps × kg) to the muscles it works.</li>
+          <li>Push days grow chest and shoulders, pull days your back, squats and deadlifts your legs, curls and pushdowns your arms.</li>
+          <li>Cardio and a falling bodyweight trend cut bodyfat.</li>
+          <li>Beginners grow fast, then it plateaus. A week off and everything starts to shrink.</li>
+          <li>You get a pump right after a session, so the change shows up on the floor straight away.</li>
+        </ul>
       </div>
     </div>
   );

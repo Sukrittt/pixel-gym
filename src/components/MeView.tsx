@@ -34,6 +34,17 @@ export default function MeView() {
           <Link className="btn primary" href="/log">+ LOG</Link>
           <Link className="btn" href={`/floor/${data.code}`}>FLOOR</Link>
           <button onClick={() => downloadCard(me, data.floorName)}>⬇ SHARE CARD</button>
+          <button
+            onClick={async () => {
+              const r = await fetch("/api/look", { method: "POST" });
+              if (r.ok) {
+                const { look } = await r.json();
+                setData((d) => d && { ...d, me: { ...d.me, look } });
+              }
+            }}
+          >
+            ↻ NEW LOOK
+          </button>
         </div>
       </div>
       <div className="grid2">

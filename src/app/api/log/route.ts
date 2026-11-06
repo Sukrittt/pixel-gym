@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { applyEntry } from "@/lib/body";
-import { buildFloorView, safeToday } from "@/lib/floor";
+import { buildFloorView, memberView, safeToday } from "@/lib/floor";
+import { PARAMS } from "@/lib/body";
 import { currentMember } from "@/lib/server/session";
 import { mutateFloor } from "@/lib/server/store";
 import { cleanEntry } from "@/lib/server/util";
@@ -13,10 +14,14 @@ export async function POST(req: Request) {
   if (!entries.length || entries.some((e: unknown) => !e)) return NextResponse.json({ error: "Some entries were invalid." }, { status: 400 });
   const today = safeToday(body.today);
   const at = new Date().toISOString();
+  const before = memberView(s.me, today, Date.now()).params;
   const r = await mutateFloor(s.doc.code, (doc) => {
     const me = doc.members.find((m) => m.id === s.me.id)!;
     return entries.some((e: NonNullable<ReturnType<typeof cleanEntry>>) => applyEntry(me, e, today, at).pr);
   });
   if (!r) return NextResponse.json({ error: "Floor not found." }, { status: 404 });
-  return NextResponse.json({ pr: r.result, code: r.doc.code, view: buildFloorView(r.doc, today, Date.now()) });
+  const view = buildFloorView(r.doc, today, Date.now());
+  const after = view.members.find((m) => m.id === s.me.id)!.params;
+  const gains = Object.fromEntries(PARAMS.map((k) => [k, Math.round((after[k] - before[k]) * 100) / 100]));
+  return NextResponse.json({ pr: r.result, code: r.doc.code, gains, view });
 }

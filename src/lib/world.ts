@@ -521,6 +521,10 @@ export function drawFame(ctx: Ctx, entries: FameEntry[]) {
   R(x0, y0, w, 44, "#5d3f2a");
   R(x0 + 2, y0 + 2, w - 4, 40, "#3a2618");
   drawText(ctx, "WALL OF FAME", x0 + w / 2 - textWidth("WALL OF FAME") / 2, y0 + 4, "#ffd23f");
+  if (!entries.length) {
+    const msg = "LOG A WORKOUT TO GET ON THE WALL";
+    drawText(ctx, msg, x0 + w / 2 - textWidth(msg) / 2, y0 + 24, "#c9a87a");
+  }
   entries.slice(0, 7).forEach((e, i) => {
     const fx = x0 + 8 + i * 28, fy = y0 + 13;
     const frame = e.streak >= 10 ? "#ffd23f" : e.streak >= 5 ? "#cfd8e0" : e.streak >= 2 ? "#cd7f32" : "#8a6448";

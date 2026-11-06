@@ -83,3 +83,6 @@ export function tagFor(v: MemberView): string {
   if (t.focus === "Rest") return `${n} · REST DAY`;
   return `${n} · ${t.focus.toUpperCase()} · ${formatKg(t.total)}`;
 }
+
+/** Floor view as of right now (server-side first paint). */
+export const floorViewNow = (doc: FloorDoc, today: string) => buildFloorView(doc, today, Date.now());

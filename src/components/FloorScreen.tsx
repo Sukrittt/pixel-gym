@@ -21,7 +21,17 @@ export default function FloorScreen({
   return (
     <>
       <FloorCanvas view={view} meId={meId} onSelect={setSel} />
-      <p className="muted">Click any avatar to inspect their body, send an emote, or scrub their timelapse.</p>
+      <ul className="roster" aria-label="lifters on this floor">
+        {view.members.map((m) => (
+          <li key={m.id}>
+            <button className={m.id === meId ? "me" : m.today ? "" : "off"} onClick={() => setSel(m)}>
+              {m.id === meId ? "★ " : ""}
+              {m.name} · {m.today ? m.today.focus : "not in yet"}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="muted">Click any avatar (or a name above) to inspect their body, send an emote, or scrub their timelapse.</p>
       {fresh && (
         <InspectCard
           m={fresh}
