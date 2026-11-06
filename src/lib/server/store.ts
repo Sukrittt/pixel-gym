@@ -78,16 +78,20 @@ export async function mutateFloor<T>(code: string, fn: (doc: FloorDoc) => T): Pr
       await write(r.doc, { etag: r.etag });
       return { doc: r.doc, result };
     } catch (e) {
-      if (!(e instanceof BlobPreconditionFailedError) || i === 3) throw e;
+      if (!(e instanceof BlobPreconditionFailedError) || i === 3) throw e; // busy floor: a real 500, not "missing"
     }
   }
-  return null;
+  throw new Error("unreachable");
 }
 
-/** The real floor code for a typed one: exact first, else a look-alike variant that exists. */
-export async function resolveCode(code: string): Promise<string | null> {
-  const variants = codeVariants(code);
-  const hits = await Promise.all(variants.map((c) => readFloor(c, true).catch(() => null)));
+/**
+ * The real floor code for a typed one: exact first, else a look-alike variant that exists.
+ * Storage errors propagate (a blip is a 500, never a wrong "not found").
+ * `exactMissed` skips re-reading the exact code when the caller already checked it.
+ */
+export async function resolveCode(code: string, exactMissed = false): Promise<string | null> {
+  const variants = codeVariants(code).slice(exactMissed ? 1 : 0);
+  const hits = await Promise.all(variants.map((c) => readFloor(c, true)));
   const i = hits.findIndex(Boolean);
   return i >= 0 ? variants[i] : null;
 }

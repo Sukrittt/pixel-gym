@@ -80,7 +80,7 @@ export function formatKg(kg: number): string {
 export function tagFor(v: MemberView): string {
   const t = v.today;
   const n = v.name.toUpperCase();
-  if (!t) return `${n} · OFF`;
+  if (!t) return `${n} · OFF TODAY`;
   if (t.focus === "Cardio") return `${n} · CARDIO · ${t.km.toFixed(1)} KM`;
   if (t.focus === "Weigh-in") return `${n} · ${t.bw ?? "?"} KG`;
   if (t.focus === "Rest") return `${n} · REST DAY`;
@@ -93,7 +93,7 @@ export const floorViewNow = (doc: FloorDoc, today: string) => buildFloorView(doc
 export type MeDay = { date: string; focus: string; total: number; sets: number; cardioMin: number; km: number; bw?: number; pr: boolean };
 export type MeData = { code: string; floorName: string; me: MemberView; series: Snapshot[]; days: MeDay[] };
 
-/** Everything /me shows, for both the server render and /api/me. */
+/** Everything /me shows (server-rendered). */
 export function meData(doc: FloorDoc, m: Member, today: string): MeData {
   const days = Object.entries(m.days)
     .sort(([a], [b]) => (a < b ? 1 : -1))

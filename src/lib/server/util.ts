@@ -69,7 +69,7 @@ export function codeVariants(code: string): string[] {
   for (const c of code) {
     const alts = SWAP[c] ? [c, SWAP[c]] : [c];
     out = out.flatMap((p) => alts.map((a) => p + a));
-    if (out.length > 64) return [code]; // pathological input: exact match only
+    if (out.length > 16) return [code]; // at most 4 look-alikes; beyond that, exact match only
   }
   return out; // first entry is always the code as typed
 }

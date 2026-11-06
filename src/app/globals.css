@@ -136,3 +136,12 @@ table.sets td button { min-width: 40px; min-height: 36px; }
 @keyframes pop { from { transform: translateY(12px); opacity: 0; } }
 
 .panel button.link, .card button.link { color: #8a4f12; }
+
+input.invalid { border-color: #b8402f; box-shadow: 0 0 0 2px #b8402f55; }
+.banner .x { min-width: 36px; min-height: 36px; font-size: 20px; }
+@media (max-width: 600px) {
+  .gain-sprites .sprite { width: 32px; height: 48px; }
+  .pump-note { display: none; }
+  .banner { padding: 8px 10px; gap: 8px; font-size: 14px; }
+}
+.nav a[aria-current="page"] { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }

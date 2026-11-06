@@ -60,7 +60,9 @@ export default function MeView({ initial }: { initial: MeData }) {
           </div>
           {lookMsg && <p className="err" role="alert">{lookMsg}</p>}
           <h3>LAST 120 DAYS</h3>
-          <p className="muted">{active} training days in the last 120.</p>
+          <p className="muted">
+            {active} training {active === 1 ? "day" : "days"} in the last 120.
+          </p>
           <div className="heat" aria-hidden>
             {Array.from({ length: 120 }, (_, i) => addDays(today, i - 119)).map((d) => {
               const x = byDate.get(d);
@@ -79,9 +81,7 @@ export default function MeView({ initial }: { initial: MeData }) {
                     {d.pr ? " · PR!" : ""}
                   </span>
                   <span className="muted">
-                    {d.total ? formatKg(d.total) : ""}
-                    {d.cardioMin ? ` ${d.cardioMin} min` : ""}
-                    {d.bw ? ` ${d.bw} kg bw` : ""}
+                    {[d.total ? formatKg(d.total) : "", d.cardioMin ? `${d.cardioMin} min cardio` : "", d.bw ? `${d.bw} kg bw` : ""].filter(Boolean).join(" · ")}
                   </span>
                 </li>
               ))}

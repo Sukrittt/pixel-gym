@@ -165,11 +165,11 @@ export default function LiveFloor({
           )}
           <span>
             <b>{pr ? "NEW PR! " : ""}Logged.</b> {t ? `Your avatar is heading to ${ZONE_NAME[t.zone]}.` : "Saved."}
-            {gains.length > 0 && <> Today: {gains.map(([k, v]) => `${k} ${v > 0 ? "+" : ""}${v.toFixed(1)}`).join(" · ")}.</>}
+            {gains.length > 0 && <> This session: {gains.map(([k, v]) => `${k} ${v > 0 ? "+" : ""}${v.toFixed(1)}`).join(" · ")}.</>}
             {gains.length > 0 && (
               <>
                 <br />
-                <span style={{ opacity: 0.85 }}>Part of that is today&apos;s pump. It fades over a few hours, and what stays is real progress.</span>
+                <span className="pump-note">Part of that is today&apos;s pump. It fades over a few hours, and what stays is real progress.</span>
               </>
             )}
           </span>

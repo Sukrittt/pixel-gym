@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Silkscreen } from "next/font/google";
+import NavLinks from "@/components/NavLinks";
 import TzCookie from "@/components/TzCookie";
 import { readSession } from "@/lib/server/session";
 import "./globals.css";
@@ -20,11 +21,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <TzCookie />
         <nav className="nav">
           <Link href="/" className="brand">PIXEL GYM</Link>
-          {s && <Link href={`/floor/${s.code}`}>My floor</Link>}
-          <Link href="/demo">Demo</Link>
-          <Link href="/log">Log</Link>
-          <Link href="/me">Me</Link>
-          <Link href="/avatar-lab">Avatar lab</Link>
+          <NavLinks floor={s?.code ?? null} />
         </nav>
         <main>{children}</main>
       </body>

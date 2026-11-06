@@ -27,7 +27,7 @@ export default function FloorScreen({
           <li key={m.id}>
             <button className={m.id === meId ? "me" : m.today ? "" : "off"} onClick={() => setSel(m)}>
               {m.id === meId ? "★ " : ""}
-              {m.name} · {m.today ? m.today.focus : "not in yet"}
+              {m.name} · {m.today ? m.today.focus : "off today"}
             </button>
           </li>
         ))}

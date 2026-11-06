@@ -20,6 +20,8 @@ export async function currentMember(fresh = false): Promise<{ doc: FloorDoc; me:
   if (!s || !/^[A-Z0-9]{4,8}$/.test(s.code)) return null;
   const doc = await readFloor(s.code, fresh);
   const me = doc?.members.find((m) => m.id === s.id && m.key === s.key);
+  // a member who joined on another instance after this one cached the floor: re-check fresh
+  if (!me && !fresh) return currentMember(true);
   return doc && me ? { doc, me } : null;
 }
 

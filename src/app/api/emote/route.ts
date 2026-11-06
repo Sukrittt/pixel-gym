@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     doc.emotes = [...doc.emotes.filter((e) => e.at > cutoff), { id: newId(4), from: s.me.id, to: body.to, kind, at: new Date(now).toISOString() }].slice(-100);
     return true;
   });
-  if (!r || r.result === SKIP) return NextResponse.json({ error: "Easy, one emote every few seconds." }, { status: 429 });
+  if (!r) return NextResponse.json({ error: "Floor not found." }, { status: 404 });
+  if (r.result === SKIP) return NextResponse.json({ error: "Easy, one emote every few seconds." }, { status: 429 });
   return NextResponse.json({ ok: true });
 }

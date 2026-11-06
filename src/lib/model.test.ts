@@ -127,7 +127,7 @@ describe("floor helpers", () => {
     expect(v).toContain("ZQ5Y8D");
     expect(v).toContain("ZQSYBD");
     expect(codeVariants("47NWXN")).toEqual(["47NWXN"]);
-    expect(codeVariants("Z".repeat(8))).toEqual(["Z".repeat(8)]); // capped
+    expect(codeVariants("ZZZZZ")).toEqual(["ZZZZZ"]); // capped at 16 variants
   });
 
   it("a cardio finisher keeps a lifting day at its station", () => {

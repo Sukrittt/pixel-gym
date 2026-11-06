@@ -29,7 +29,7 @@ export default async function FloorPage({ params, searchParams }: PageProps<"/fl
     const floor = await readFloor(c, true);
     if (!floor) {
       // hand-typed look-alike (2Q5Y8D for ZQ5Y8D): send them to the real floor
-      const real = await resolveCode(c);
+      const real = await resolveCode(c, true);
       if (real && real !== c) redirect(`/floor/${real}`);
       notFound();
     }

@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Entry } from "@/lib/body";
 import { EXERCISES, findExercise } from "@/lib/exercises";
 import { localDate } from "@/lib/floor";
@@ -42,11 +42,17 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState("");
-  // stable per form visit: a retried save after a lost response is ignored server-side
-  const [logId] = useState(() => Math.random().toString(36).slice(2) + Date.now().toString(36));
-  // any edit clears a stale validation message
+  // one id per exact submission: a retried save after a lost response is ignored server-side,
+  // but any edit makes it a new submission
+  const newId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const [logId, setLogId] = useState(newId);
+  const [bwInvalid, setBwInvalid] = useState(false);
+  const bwRef = useRef<HTMLInputElement>(null);
+  // any edit clears a stale validation message and starts a new submission
   const touch = <T,>(set: (v: T) => void) => (v: T) => {
     setMsg("");
+    setBwInvalid(false);
+    setLogId(newId());
     set(v);
   };
   const setRowsT = touch(setRows);
@@ -89,7 +95,11 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       list = [...rows.map(toLift), ...(d ? [d] : [])];
       if (+cardio.minutes > 0) list.push({ kind: "cardio", exercise: cardio.exercise, minutes: clampNum(cardio.minutes, 600, 1), km: clampNum(cardio.km, 300) });
       if (bw.trim()) {
-        if (+bw < 25 || +bw > 350) return setMsg("Bodyweight should be between 25 and 350 kg.");
+        if (+bw < 25 || +bw > 350) {
+          setBwInvalid(true);
+          bwRef.current?.focus();
+          return setMsg("Bodyweight should be between 25 and 350 kg.");
+        }
         list.push({ kind: "weight", bw: +bw });
       }
     }
@@ -100,6 +110,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       const r = await fetch("/api/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entries: list, today: localDate(), logId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Could not save.");
+      // duplicate = this exact submission already landed (lost response): still go see it
       const gain = Object.entries(j.gains ?? {})
         .filter(([, v]) => Math.abs(v as number) >= 0.05)
         .map(([k, v]) => `${k}:${v}`)
@@ -147,7 +158,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           <div className="row">
             <label style={{ flex: "3 1 200px" }}>
               EXERCISE
-              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
+              <input list="exercises" value={draft.exercise} onChange={(e) => (setMsg(""), setLogId(newId()), setDraft({ ...draft, exercise: e.target.value }))} placeholder="Start typing: bench, squat, curl…" />
             </label>
             <label>
               SETS
@@ -241,7 +252,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           </label>
           <label>
             BODYWEIGHT KG
-            <input type="number" inputMode="decimal" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBwT(e.target.value)} />
+            <input ref={bwRef} type="number" inputMode="decimal" min={25} max={350} step={0.1} value={bw} onChange={(e) => setBwT(e.target.value)} aria-invalid={bwInvalid} aria-describedby={bwInvalid ? "log-msg" : undefined} className={bwInvalid ? "invalid" : ""} />
           </label>
         </div>
         <div className="actions">
@@ -252,7 +263,11 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
             LOG REST DAY
           </button>
         </div>
-        {msg && <p className="err" role="alert">{msg}</p>}
+        {msg && (
+          <p className="err" role="alert" id="log-msg">
+            {msg}
+          </p>
+        )}
       </div>
       <div className="panel">
         <h3>IMPORT FROM HEVY / STRONG</h3>

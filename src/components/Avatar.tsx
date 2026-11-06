@@ -35,7 +35,7 @@ export function ParamBars({ p, compare }: { p: Params; compare?: Params }) {
   );
 }
 
-export function Timelapse({ series, look }: { series: Snapshot[]; look: MemberView["look"] }) {
+export function Timelapse({ series, look, who }: { series: Snapshot[]; look: MemberView["look"]; who?: string }) {
   const [i, setI] = useState(series.length - 1);
   const [playing, setPlaying] = useState(false);
   const idx = Math.min(i, series.length - 1);
@@ -79,7 +79,7 @@ export function Timelapse({ series, look }: { series: Snapshot[]; look: MemberVi
           <input type="range" min={0} max={series.length - 1} value={idx} onChange={(e) => (setPlaying(false), setI(+e.target.value))} aria-label="timelapse day" />
         </div>
       ) : (
-        <p className="muted">Day one. Come back tomorrow and this becomes a timelapse.</p>
+        <p className="muted">{who ? `${who} is on day one. Their timelapse grows from tomorrow.` : "Day one. Come back tomorrow and this becomes a timelapse."}</p>
       )}
     </div>
   );
@@ -172,7 +172,13 @@ export function InspectCard({
           <button onClick={() => downloadCard(m, floorName)}>⬇ SHARE CARD</button>
         </div>
         <h3>TIMELAPSE</h3>
-        {series ? <Timelapse series={series} look={m.look} /> : <p className="muted">loading…</p>}
+        {!series ? (
+          <p className="muted">loading…</p>
+        ) : m.weekly === 0 && m.days <= 1 && !m.today ? (
+          <p className="muted">{isMe ? "You haven't" : `${m.name} hasn't`} logged a workout yet.</p>
+        ) : (
+          <Timelapse series={series} look={m.look} who={isMe ? undefined : m.name} />
+        )}
       </div>
     </div>
   );
