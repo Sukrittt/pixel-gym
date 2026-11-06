@@ -2,9 +2,11 @@
 
 You train in real life, and your pixel avatar trains too. Its body changes in ways you can see. Friends' avatars share the same gym floor.
 
-**Live:** https://pixel-gym.vercel.app · demo floor with no login at [/demo](https://pixel-gym.vercel.app/demo)
+**Live:** https://pixel-gym-ruby.vercel.app · demo floor with no login at [/demo](https://pixel-gym-ruby.vercel.app/demo)
 
 ![Demo floor](docs/screenshots/demo-floor.png)
+
+![Inspection card](docs/screenshots/inspection-card.png)
 
 It's a top-down pixel world (a 40×24 tile gym floor drawn with canvas 2D at 16px tiles, pixel-perfect up to 3×), split into real stations: free weights, four squat racks, a cardio strip, a mat zone, a smoothie bar with a scale, lockers, and a wall of fame. When you log a workout, your avatar walks (BFS pathfinding) to the matching station and starts lifting. If you haven't logged anything today, you sit greyed out on the bench outside.
 
