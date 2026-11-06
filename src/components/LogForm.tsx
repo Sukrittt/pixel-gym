@@ -124,7 +124,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
       router.push(`/floor/${j.code ?? code}?logged=1&gain=${encodeURIComponent(gain)}${j.pr ? "&pr=1" : ""}`);
     } catch (x) {
       setBusy(false);
-      setMsg(x instanceof TypeError || (x as Error).name === "TimeoutError" ? "Network error: check your connection and try again. Saving again won't double-log." : (x as Error).message || "Could not save.");
+      setMsg(x instanceof TypeError || (x as Error).name === "TimeoutError" ? "Network error: check your connection and try again. Saving the same workout again won't double-log." : (x as Error).message || "Could not save.");
     }
   };
 
@@ -141,7 +141,7 @@ export default function LogForm({ code, loggedToday }: { code: string; loggedTod
           : j.error ?? "Import failed.",
       );
     } catch {
-      setImp("Import failed: network error.");
+      setImp("The import timed out or the connection dropped. It may still be finishing: importing the same file again is safe, already-imported sets are skipped.");
     }
   };
 

@@ -119,14 +119,14 @@ export function findExercise(raw: string, opts: { prefix?: boolean } = {}): Exer
     }
   }
   if (best || !opts.prefix || n.length < 3) return best;
-  if (n.endsWith("s") && n.length > 3) return findExercise(n.slice(0, -1), opts) ?? undefined; // "rows", "curls"
   // prefix while typing: "bench" -> Bench Press, "lat p" -> Lat Pulldown (list order = most common first).
   // Lifts only: a lifter typing "row" means a row, not the rowing machine.
   const lifts = EXERCISES.filter((e) => !e.cardio);
   return (
     lifts.find((e) => norm(e.name).startsWith(n)) ??
     lifts.find((e) => e.aliases?.some((a) => norm(a).startsWith(n))) ??
-    lifts.find((e) => norm(e.name).split(" ").some((w) => w.startsWith(n))) // "row" -> Barbell Row (first row in list order)
+    lifts.find((e) => norm(e.name).split(" ").some((w) => w.startsWith(n))) ?? // "row" -> Barbell Row (first row in list order)
+    (n.endsWith("s") && n.length > 3 ? findExercise(n.slice(0, -1), opts) : undefined) // plural last: "rows", "curls"
   );
 }
 
